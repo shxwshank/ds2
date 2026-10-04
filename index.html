@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="DS2 exam trainer: rebuild regression outputs and test claims, taught step by step.">
+<title>Output Court</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+[hidden]{display:none!important}
+img{max-width:100%}
+:root{
+  --bg:#F1F4F2; --surface:#FFFFFF; --surface2:#EAEFEC; --ink:#17201C; --muted:#56635D; --line:#D3DBD7;
+  --accent:#12684F; --accent-ink:#FFFFFF; --accent-soft:#DDEFE7;
+  --hl:#FFE38C; --hl-ink:#4A3800; --fill:#DCF1E4; --fill-ink:#145C33;
+  --s1:#2F6FDB; --s2:#B046C4; --s3:#D9701F;
+  --ok:#1C7F45; --bad:#BE3A27; --bad-soft:#FBE7E3; --ok-soft:#E1F3E7;
+  --display:'Bricolage Grotesque','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --body:'Atkinson Hyperlegible',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111614; --surface:#18201C; --surface2:#212A26; --ink:#E4EBE7; --muted:#9AA9A2; --line:#32403A;
+  --accent:#4EC39C; --accent-ink:#0B1A14; --accent-soft:#1C372D;
+  --hl:#5E4A0E; --hl-ink:#FFE7A1; --fill:#173B27; --fill-ink:#9BE3B5;
+  --s1:#6E9EF2; --s2:#D27CE3; --s3:#F09A55;
+  --ok:#5BCB8A; --bad:#F08A76; --bad-soft:#3A1F1A; --ok-soft:#173022; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#18201C; --surface2:#212A26; --ink:#E4EBE7; --muted:#9AA9A2; --line:#32403A;
+  --accent:#4EC39C; --accent-ink:#0B1A14; --accent-soft:#1C372D;
+  --hl:#5E4A0E; --hl-ink:#FFE7A1; --fill:#173B27; --fill-ink:#9BE3B5;
+  --s1:#6E9EF2; --s2:#D27CE3; --s3:#F09A55;
+  --ok:#5BCB8A; --bad:#F08A76; --bad-soft:#3A1F1A; --ok-soft:#173022; color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--body)}
+.app{display:grid;grid-template-columns:250px minmax(0,1fr);gap:28px;max-width:1220px;margin:0 auto;padding-inline:16px;min-height:100%}
+nav{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;max-height:100vh;overflow:auto;padding-block:24px;display:flex;flex-direction:column;gap:18px}
+.brand{font:800 26px/1 var(--display);letter-spacing:-.01em}
+.brand span{display:block;font:400 13px/1.4 var(--body);color:var(--muted);margin-top:6px;letter-spacing:0}
+.navgroups{display:flex;flex-direction:column;gap:18px}
+.navgroup{display:flex;flex-direction:column;gap:2px}
+.navgroup h4{margin:0 0 4px;font:700 11px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.navitem{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:7px 8px;color:var(--ink);font:15px/1.3 var(--body);cursor:pointer}
+.navitem:hover:not(:disabled){background:var(--surface2)}
+.navitem.cur{background:var(--accent-soft);color:var(--ink);font-weight:700}
+.navitem:disabled{color:var(--muted);opacity:.6;cursor:not-allowed}
+.navitem .code{font:600 12px var(--mono);color:var(--muted);width:24px;flex:none}
+.navitem .mk{margin-left:auto;font-size:13px;color:var(--ok)}
+.navfoot{margin-top:auto;display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.navfoot label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+main{padding-block:28px 110px;min-width:0}
+.eyebrow{font:700 12px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font:800 clamp(28px,4vw,40px)/1.08 var(--display);margin:6px 0 18px;letter-spacing:-.015em;text-wrap:balance}
+h2{font:700 22px/1.2 var(--display);margin:0 0 10px;text-wrap:balance}
+h3{font:700 17px/1.3 var(--body);margin:0 0 6px}
+p{margin:0 0 12px;max-width:68ch}
+ul{margin:0 0 12px;padding-left:20px;max-width:68ch}
+li{margin-bottom:4px}
+code,.m{font-family:var(--mono);font-size:.9em}
+.stepper{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:22px}
+.stepper button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 14px;font:14px var(--body);cursor:pointer}
+.stepper button.cur{border-color:var(--accent);color:var(--ink);background:var(--accent-soft);font-weight:700}
+.stepper button.done{color:var(--ink)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+.stack{display:flex;flex-direction:column;gap:18px}
+.rule{border-left:4px solid var(--accent);background:var(--accent-soft);padding:12px 16px;border-radius:0 10px 10px 0;max-width:72ch}
+.rule b{display:block;font:700 12px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.formula{font:600 17px/1.6 var(--mono);background:var(--surface2);border-radius:10px;padding:12px 16px;overflow-x:auto}
+.c1{color:var(--s1)} .c2{color:var(--s2)} .c3{color:var(--s3)} .chl{background:var(--hl);color:var(--hl-ink);padding:0 4px;border-radius:4px}
+.navrow{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:22px;flex-wrap:wrap}
+button.btn{font:700 15px var(--body);border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 16px;cursor:pointer}
+button.btn:hover{border-color:var(--muted)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.primary:hover{filter:brightness(1.07);border-color:var(--accent)}
+button.ghost{border-color:transparent;background:none;color:var(--muted);font-weight:400;padding:6px 8px}
+button.ghost:hover{color:var(--ink)}
+button:focus-visible,input:focus-visible,.opt:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+/* Excel-style output */
+.xwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.xout{font:13.5px/1.35 var(--mono);min-width:640px;font-variant-numeric:tabular-nums}
+.xtitle{font-weight:600;margin-bottom:8px}
+.xsec{font-style:italic;font-weight:600;margin:14px 0 2px}
+.xt{border-collapse:collapse;margin-bottom:4px}
+.xt th{font-style:italic;font-weight:400;text-align:right;padding:3px 10px;border-bottom:1px solid var(--ink)}
+.xt th:first-child{text-align:left}
+.xt td{text-align:right;padding:3px 10px;white-space:nowrap}
+.xt td:first-child{text-align:left;padding-left:0}
+.xt tr:last-child td{border-bottom:1px solid var(--ink)}
+.xt.rs td:first-child{min-width:150px}
+.cell{display:inline-block;min-width:74px;padding:1px 6px;border-radius:5px;border:2px solid transparent}
+.cell.hl{background:var(--hl);color:var(--hl-ink)}
+.cell.fill{background:var(--fill);color:var(--fill-ink)}
+.cell.q{border:2px dashed var(--muted);color:var(--muted);text-align:center}
+.cell.q.hl{border-color:var(--hl-ink)}
+.cell.L{border:2px dashed var(--accent);color:var(--accent);font-weight:600;text-align:center}
+.cell.hide{color:var(--muted)}
+.cell.s1{border-color:var(--s1)} .cell.s2{border-color:var(--s2)} .cell.s3{border-color:var(--s3)}
+.desc{margin-top:12px}
+/* worked steps */
+.wsteps{display:flex;flex-direction:column;gap:10px}
+.wstep{display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:start}
+.wnum{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:700 14px var(--body)}
+.wstep .calc{font:15px/1.6 var(--mono);background:var(--surface2);padding:8px 12px;border-radius:8px;margin:6px 0;overflow-x:auto;white-space:nowrap}
+.write{border:1px dashed var(--accent);border-radius:8px;padding:8px 12px;margin-top:6px;font-style:italic;max-width:68ch}
+.write::before{content:'Write in the exam: ';font-style:normal;font-weight:700;color:var(--accent)}
+/* items */
+.item{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--surface)}
+.item.ok{border-color:var(--ok);background:var(--ok-soft)}
+.item.bad{border-color:var(--bad)}
+.item .prompt{margin-bottom:8px}
+.tag{display:inline-grid;place-items:center;min-width:24px;height:24px;border-radius:6px;border:2px dashed var(--accent);color:var(--accent);font:700 13px var(--mono);margin-right:8px;padding:0 4px}
+.inrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.inrow input{font:16px var(--mono);padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);width:min(320px,100%)}
+.preview{font:13px var(--mono);color:var(--muted)}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;background:var(--surface)}
+.opt input{margin-top:4px;accent-color:var(--accent)}
+.opt.sel{border-color:var(--accent)}
+.opt.right{border-color:var(--ok);background:var(--ok-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.fb{margin-top:10px;font-size:15px;max-width:70ch}
+.fb.ok{color:var(--ok)} .fb.bad{color:var(--bad)}
+.fb .why{color:var(--ink);display:block;margin-top:4px}
+.hint{margin-top:8px;font-size:15px;background:var(--surface2);border-radius:8px;padding:8px 12px;max-width:70ch}
+.hint b{color:var(--accent)}
+.itemfoot{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.toolnote{font-size:14px;color:var(--muted);max-width:72ch}
+.banner{border-radius:12px;padding:16px 18px;background:var(--ok-soft);border:1px solid var(--ok)}
+.banner h2{color:var(--ok)}
+canvas.tcurve{width:100%;max-width:640px;height:auto;aspect-ratio:3/1;display:block;margin-top:8px;border-radius:8px;background:var(--surface2)}
+table.plain{border-collapse:collapse;font-size:15px}
+table.plain th,table.plain td{text-align:left;padding:6px 14px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+table.plain th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tblwrap{overflow-x:auto}
+.qblock{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:18px}
+.qhead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.qhead .pts{font:600 13px var(--mono);color:var(--muted);margin-left:auto}
+.score{font:800 44px/1 var(--display)}
+.bar{height:8px;border-radius:4px;background:var(--surface2);overflow:hidden;width:160px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.case{max-width:72ch}
+/* Excel formula lines */
+.xlbox{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.xlrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.xlrow code{font:14px var(--mono);color:var(--ink);background:var(--surface2);padding:3px 8px;border-radius:6px;overflow-wrap:anywhere}
+.xltag{font:700 11px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:1px 5px}
+.xlrow .btn.ghost{padding:3px 6px;font-size:13px;color:var(--accent)}
+/* Calculator */
+#calcFab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:30;display:flex;align-items:center;gap:8px;font:700 15px var(--body);background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:12px 18px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+#calcFab svg{width:18px;height:18px}
+#calc{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:31;width:360px;max-width:calc(100vw - 32px);max-height:calc(100vh - 100px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.28);padding:14px;display:flex;flex-direction:column;gap:10px}
+.chead{display:flex;align-items:center;gap:8px}
+.chead b{font:800 17px var(--display)}
+.chead .x{margin-left:auto}
+.ctabs{display:flex;gap:4px;background:var(--surface2);border-radius:9px;padding:3px}
+.ctabs button{flex:1;border:0;background:none;border-radius:7px;padding:6px;font:600 14px var(--body);color:var(--muted);cursor:pointer}
+.ctabs button.cur{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.cscreen{background:var(--surface2);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.chist{font:12px var(--mono);color:var(--muted);min-height:16px;overflow-wrap:anywhere}
+#cin{font:17px var(--mono);border:0;background:transparent;color:var(--ink);width:100%;padding:2px 0;outline:none}
+.cres{font:700 22px var(--mono);text-align:right;min-height:28px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.cres.err{font:13px var(--body);color:var(--bad);text-align:left}
+.ckeys{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.ckeys button{font:15px var(--mono);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:9px 0;cursor:pointer}
+.ckeys button:hover{background:var(--surface2)}
+.ckeys button.fn{font-size:13px;background:var(--surface2)}
+.ckeys button.op{color:var(--accent);font-weight:600}
+.ckeys button.eq{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.cuse{display:flex;gap:8px}
+.cuse button{flex:1}
+.cuse button:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.xllist{display:flex;flex-direction:column;gap:6px}
+.xlf{border:1px solid var(--line);border-radius:9px;padding:8px 10px;text-align:left;background:var(--surface);color:var(--ink);cursor:pointer;font:14px var(--body)}
+.xlf:hover{border-color:var(--accent)}
+.xlf code{font:600 13px var(--mono);color:var(--accent)}
+.xlf span{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.chistlist{display:flex;flex-direction:column;gap:3px;font:12px var(--mono)}
+.chistlist button{text-align:left;border:0;background:none;color:var(--muted);cursor:pointer;padding:2px 0;overflow-wrap:anywhere}
+.chistlist button:hover{color:var(--ink)}
+@media (max-width:520px){#calc{left:16px;right:16px;width:auto;bottom:calc(72px + env(safe-area-inset-bottom,0px))}}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr;gap:0}
+  nav{position:static;max-height:none;padding-block:16px 4px;gap:12px}
+  .navgroups{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+  .navgroup{flex-direction:row;gap:4px}
+  .navgroup h4{display:none}
+  .navitem{white-space:nowrap;border:1px solid var(--line);width:auto}
+  .navitem .ttl{display:none}
+  .navfoot{flex-direction:row;flex-wrap:wrap;margin-top:0;border-top:0;padding-top:0}
+  main{padding-block:12px 60px}
+  .panel{padding:16px}
+}
+@media (prefers-reduced-motion:no-preference){.wstep.new{animation:rise .25s ease-out}@keyframes rise{from{transform:translateY(4px);opacity:.4}to{transform:none;opacity:1}}}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav id="nav"></nav>
+  <main id="main" tabindex="-1"></main>
+</div>
+
+<button id="calcFab" type="button" aria-expanded="false" aria-controls="calc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M8 6.5h8M8 11h.01M12 11h.01M16 11h.01M8 14.5h.01M12 14.5h.01M16 14.5h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>Calculator</button>
+<div id="calc" hidden role="dialog" aria-label="Scientific calculator">
+  <div class="chead"><b>Calculator</b><div class="ctabs" style="flex:1;margin-left:8px"><button type="button" data-ctab="keys" class="cur">Keys</button><button type="button" data-ctab="excel">Excel</button></div><button class="btn ghost x" type="button" data-cclose aria-label="Close calculator">✕</button></div>
+  <div class="cscreen"><div class="chist" id="chist"></div><input id="cin" autocomplete="off" spellcheck="false" placeholder="Type or tap, e.g. SQRT(4.7449)" aria-label="Calculator expression"><div class="cres" id="cres">0</div></div>
+  <div id="cpKeys">
+    <div class="ckeys">
+      <button class="fn" data-k="(">(</button><button class="fn" data-k=")">)</button><button class="fn" data-k="^2">x²</button><button class="fn" data-k="^">xʸ</button><button class="fn" data-k="SQRT(">√</button>
+      <button class="fn" data-k="LN(">ln</button><button class="fn" data-k="LOG(">log</button><button class="fn" data-k="EXP(">eˣ</button><button class="fn" data-k="PI()">π</button><button class="fn" data-k="1/(">1/x</button>
+      <button class="fn" data-k="SIN(">sin</button><button class="fn" data-k="COS(">cos</button><button class="fn" data-k="TAN(">tan</button><button class="fn" data-k="FACT(">n!</button><button class="fn" data-k="ABS(">|x|</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="op" data-k="/">÷</button><button class="op" data-act="ac">AC</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button class="op" data-k="*">×</button><button class="op" data-act="bs">⌫</button>
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button class="op" data-k="-">−</button><button class="op" data-k="ANS">Ans</button>
+      <button data-k="0">0</button><button data-k=".">.</button><button class="op" data-k=", ">,</button><button class="op" data-k="+">+</button><button class="eq" data-act="eq">=</button>
+    </div>
+  </div>
+  <div id="cpExcel" hidden><div class="xllist" id="xllist"></div></div>
+  <div class="cuse"><button class="btn primary" type="button" data-act="use" id="cuseBtn" disabled>Use in answer</button><button class="btn" type="button" data-act="copy">Copy result</button></div>
+  <p class="toolnote" id="cuseNote" style="margin:-4px 0 0">Click an answer box first, then <b>Use in answer</b> fills it with this result.</p>
+  <div><div class="eyebrow" style="margin-bottom:4px">History</div><div class="chistlist" id="chistlist"><span class="toolnote">Results appear here.</span></div></div>
+</div>
+
+<script>
+/* ================= Statistics ================= */
+function gammaln(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);let s=1.000000000190015;for(let j=0;j<6;j++)s+=c[j]/++y;return -t+Math.log(2.5066282746310005*s/x)}
+function betacf(x,a,b){const MAXIT=400,EPS=3e-15,FP=1e-300;const qab=a+b,qap=a+1,qam=a-1;let c=1,d=1-qab*x/qap;if(Math.abs(d)<FP)d=FP;d=1/d;let h=d;for(let m=1;m<=MAXIT;m++){const m2=2*m;let aa=m*(b-m)*x/((qam+m2)*(a+m2));d=1+aa*d;if(Math.abs(d)<FP)d=FP;c=1+aa/c;if(Math.abs(c)<FP)c=FP;d=1/d;h*=d*c;aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));d=1+aa*d;if(Math.abs(d)<FP)d=FP;c=1+aa/c;if(Math.abs(c)<FP)c=FP;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<EPS)break}return h}
+function ibeta(x,a,b){if(x<=0)return 0;if(x>=1)return 1;const bt=Math.exp(gammaln(a+b)-gammaln(a)-gammaln(b)+a*Math.log(x)+b*Math.log(1-x));return x<(a+1)/(a+b+2)?bt*betacf(x,a,b)/a:1-bt*betacf(1-x,b,a)/b}
+function tcdf(t,df){const x=df/(df+t*t);const p=0.5*ibeta(x,df/2,0.5);return t>=0?1-p:p}
+function tinv(p,df){let lo=-2000,hi=2000;for(let i=0;i<120;i++){const m=(lo+hi)/2;if(tcdf(m,df)<p)lo=m;else hi=m}return (lo+hi)/2}
+function tpdf(t,df){return Math.exp(gammaln((df+1)/2)-gammaln(df/2))/Math.sqrt(df*Math.PI)*Math.pow(1+t*t/df,-(df+1)/2)}
+function fcdf(f,d1,d2){if(f<=0)return 0;return ibeta(d1*f/(d1*f+d2),d1/2,d2/2)}
+function finvrt(a,d1,d2){let hi=1;while(1-fcdf(hi,d1,d2)>a&&hi<1e9)hi*=2;let lo=0;for(let i=0;i<120;i++){const m=(lo+hi)/2;if(1-fcdf(m,d1,d2)>a)lo=m;else hi=m}return (lo+hi)/2}
+function ncdf(z){return 0.5*(1+erf(z/Math.SQRT2))}
+function erf(x){const s=Math.sign(x);x=Math.abs(x);const t=1/(1+0.3275911*x);const y=1-((((1.061405429*t-1.453152027)*t+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);return s*y}
+function ninv(p){let lo=-40,hi=40;for(let i=0;i<120;i++){const m=(lo+hi)/2;if(ncdf(m)<p)lo=m;else hi=m}return (lo+hi)/2}
+
+/* ================= Expression input (numbers, + - * / ^, Excel functions) ================= */
+const FN={
+ 'T.INV':(p,df)=>tinv(p,df),'T.INV.2T':(a,df)=>tinv(1-a/2,df),'T.DIST.RT':(x,df)=>1-tcdf(x,df),'T.DIST.2T':(x,df)=>2*(1-tcdf(Math.abs(x),df)),
+ 'T.DIST':(x,df,c)=>c===0?tpdf(x,df):tcdf(x,df),'F.DIST.RT':(f,a,b)=>1-fcdf(f,a,b),'F.INV.RT':(a,d1,d2)=>finvrt(a,d1,d2),
+ 'NORM.S.INV':p=>ninv(p),'NORM.S.DIST':(z,c)=>c===0?Math.exp(-z*z/2)/Math.sqrt(2*Math.PI):ncdf(z),'NORM.INV':(p,m,sd)=>m+sd*ninv(p),'NORM.DIST':(x,m,sd,c)=>c===0?Math.exp(-(((x-m)/sd)**2)/2)/(sd*Math.sqrt(2*Math.PI)):ncdf((x-m)/sd),
+ 'F.INV':(p,d1,d2)=>finvrt(1-p,d1,d2),'F.DIST':(f,a,b,c)=>fcdf(f,a,b),
+ 'SQRT':Math.sqrt,'ABS':Math.abs,'LN':Math.log,'EXP':Math.exp,'LOG10':Math.log10,'LOG':(x,b)=>b==null?Math.log10(x):Math.log(x)/Math.log(b),'POWER':Math.pow,
+ 'ROUND':(x,n=0)=>{const f=10**n;return Math.round(x*f)/f},'FACT':x=>{let r=1;for(let i=2;i<=Math.round(x);i++)r*=i;return r},
+ 'SIN':Math.sin,'COS':Math.cos,'TAN':Math.tan,'ASIN':Math.asin,'ACOS':Math.acos,'ATAN':Math.atan};
+let ANSV=0;
+function evalExpr(src){
+  let s=String(src).trim().replace(/^=/,'').replace(/[−–—]/g,'-').replace(/[×·]/g,'*').replace(/÷/g,'/').replace(/\s+/g,'');
+  if(!s)return null;
+  if(!s.includes('('))s=s.replace(/,/g,'');
+  const T=[];let i=0;
+  while(i<s.length){const c=s[i];
+    const num=s.slice(i).match(/^(\d+\.?\d*|\.\d+)(e[+-]?\d+)?/i);
+    if(num){T.push({t:'n',v:parseFloat(num[0])});i+=num[0].length;continue}
+    const id=s.slice(i).match(/^[A-Za-z][A-Za-z0-9.]*/);
+    if(id){T.push({t:'id',v:id[0].toUpperCase()});i+=id[0].length;continue}
+    if('+-*/^(),%'.includes(c)){T.push({t:c});i++;continue}
+    throw 'Unexpected "'+c+'"';}
+  let p=0;const eat=t=>{if(T[p]&&T[p].t===t){p++;return true}return false};
+  function expr(){let v=term();for(;;){if(eat('+'))v+=term();else if(eat('-'))v-=term();else return v}}
+  function term(){let v=unary();for(;;){if(eat('*'))v*=unary();else if(eat('/'))v/=unary();else return v}}
+  function unary(){if(eat('-'))return -unary();if(eat('+'))return unary();return power()}
+  function power(){let b=post();if(eat('^'))return Math.pow(b,unary());return b}
+  function post(){let v=prim();while(eat('%'))v/=100;return v}
+  function prim(){const k=T[p];if(!k)throw 'Incomplete';
+    if(k.t==='n'){p++;return k.v}
+    if(k.t==='id'){p++;if(k.v==='PI'){if(eat('(')&&!eat(')'))throw 'PI() takes no arguments';return Math.PI}if(k.v==='ANS')return ANSV;if(k.v==='TRUE')return 1;if(k.v==='FALSE')return 0;const f=FN[k.v];if(!f)throw 'Unknown function '+k.v;if(!eat('('))throw 'Missing "("';const a=[];if(!eat(')')){do{a.push(expr())}while(eat(','));if(!eat(')'))throw 'Missing ")"'}return f(...a)}
+    if(eat('(')){const v=expr();if(!eat(')'))throw 'Missing ")"';return v}
+    throw 'Check the expression';}
+  const v=expr();if(p<T.length)throw 'Check the expression';return v;
+}
+
+/* ================= Number formatting ================= */
+function trimz(s){return s.includes('.')&&!/e/i.test(s)?s.replace(/0+$/,'').replace(/\.$/,''):s}
+function nf(v,dp){if(v==null||!isFinite(v))return '—';const a=Math.abs(v);
+  if(dp!=null)return v.toLocaleString('en-US',{minimumFractionDigits:dp,maximumFractionDigits:dp});
+  if(a>=1e5)return Math.round(v).toLocaleString('en-US');
+  if(a>=100)return v.toLocaleString('en-US',{maximumFractionDigits:3});
+  if(a>=1)return v.toLocaleString('en-US',{maximumFractionDigits:4});
+  if(a===0)return '0';
+  if(a<1e-4)return v.toExponential(2);
+  return trimz(v.toPrecision(4));}
+function xf(v,id){if(v==null||!isFinite(v))return '—';
+  if(/^(p\d|sigf)/.test(id)){if(Math.abs(v)<1e-4){const e=v.toExponential(2).toUpperCase();return e.replace(/E([+-])(\d)$/,'E$10$2')}return trimz(v.toPrecision(4))}
+  if(/^df|^n$/.test(id))return String(Math.round(v));
+  if(Math.abs(v)>=1e5)return Math.round(v).toLocaleString('en-US');
+  return trimz(v.toPrecision(7));}
+
+/* ================= Models (built from the course / exam outputs) ================= */
+function model(o){
+  const k=o.coefs.length-1,n=o.n,sst=o.sst,sse=o.sse,ssr=sst-sse,dfr=k,dfe=n-k-1,dft=n-1;
+  const msr=ssr/dfr,mse=sse/dfe,F=msr/mse,R2=ssr/sst,v={};
+  Object.assign(v,{n,multR:Math.sqrt(R2),R2,adjR2:1-(1-R2)*(n-1)/dfe,se:Math.sqrt(mse),df_reg:dfr,df_res:dfe,df_tot:dft,ss_reg:ssr,ss_res:sse,ss_tot:sst,ms_reg:msr,ms_res:mse,f:F,sigf:1-fcdf(F,dfr,dfe)});
+  const tc=tinv(0.975,dfe);
+  o.coefs.forEach((c,i)=>{const t=c.b/c.se;v['b'+i]=c.b;v['se'+i]=c.se;v['t'+i]=t;v['p'+i]=2*(1-tcdf(Math.abs(t),dfe));v['lo'+i]=c.b-tc*c.se;v['hi'+i]=c.b+tc*c.se});
+  return {...o,k,v};
+}
+const CARS=model({key:'cars',n:10,sst:188.1,sse:37.9595,coefs:[{name:'Intercept',b:56.20466,se:3.535166},{name:'Odometer Reading',b:-0.26682,se:0.047434}],
+  desc:[['Price (₹10,000s)','36.7','4.5717'],['Odometer (1,000 km)','73.1','15.3075']]});
+const BS=model({key:'bs',n:36,sst:35*10916.81**2,sse:2505723500,coefs:[{name:'Intercept',b:48621.35,se:10725.33},{name:'MachHrs',b:34.70224,se:7.299902}],
+  desc:[['Overhead (₹)','99,151.67','10,916.81'],['MachHrs','1,456.11','198.78']]});
+const BM=model({key:'bm',n:36,sst:35*10916.81**2,sse:16883824*33,coefs:[{name:'Intercept',b:3996.678,se:6603.651},{name:'MachHrs',b:43.5364,se:3.589484},{name:'ProdRuns',b:883.6179,se:82.25141}]});
+const WG=(()=>{const n=35,sx=25.00183,sy=2.14171,mx=61.1343,my=11.6897,mse=1.603,sst=(n-1)*sy*sy,sse=(n-2)*mse,r=Math.sqrt(1-sse/sst),b1=r*sy/sx,b0=my-b1*mx,se1=Math.sqrt(mse)/(sx*Math.sqrt(n-1)),se0=Math.sqrt(mse)*Math.sqrt(1/n+mx*mx/((n-1)*sx*sx));
+  return model({key:'wg',n,sst,sse,coefs:[{name:'Intercept',b:b0,se:se0},{name:'PercentPopE',b:b1,se:se1}],desc:[['AvgWage ($/week)','11.6897','2.14171'],['PercentPopE (%)','61.1343','25.00183']]})})();
+const JP=model({key:'jp',n:414,sst:3058455103,sse:3058455103-1387787090,coefs:[{name:'Intercept',b:9170.2854,se:130.5221},{name:'DIS_METRO_STN',b:-1.4524,se:0.0785}],
+  desc:[['Price_PSQFT (₹/sq ft)','7,596.039','2,721.298'],['DIS_METRO_STN (m)','1,083.886','1,262.110']]});
+const HW=model({key:'hw',n:60,sst:49450.437,sse:49450.437-41002.165,coefs:[{name:'Intercept',b:21.1,se:4.01},{name:'ProdCost',b:7.092,se:7.092/16.778}],
+  desc:[['Receipts ($M)','83.05','29.20'],['ProdCost ($M)','8.74','3.72']]});
+const MODELS={cars:CARS,bs:BS,bm:BM,wg:WG,jp:JP,hw:HW};
+
+/* ================= Output table renderer ================= */
+function cellSpec(spec,id){return (spec&&spec[id])||''}
+function cell(M,spec,id){
+  const s=cellSpec(spec,id),val=xf(M.v[id],id);
+  if(!s)return `<span class="cell">${val}</span>`;
+  if(s==='hide')return `<span class="cell hide">—</span>`;
+  if(s==='q')return `<span class="cell q">?</span>`;
+  if(s==='qhl')return `<span class="cell q hl">?</span>`;
+  if(s==='hl')return `<span class="cell hl">${val}</span>`;
+  if(s==='fill')return `<span class="cell fill">${val}</span>`;
+  if(/^s[123]$/.test(s))return `<span class="cell ${s}">${val}</span>`;
+  if(s.startsWith('L:'))return `<span class="cell L">${s.slice(2)}</span>`;
+  return `<span class="cell">${val}</span>`;
+}
+function outputTable(M,spec,opts={}){
+  const c=id=>cell(M,spec,id);
+  let h=`<div class="xwrap"><div class="xout"><div class="xtitle">SUMMARY OUTPUT${opts.label?` <span style="font-weight:400;color:var(--muted)">· ${opts.label}</span>`:''}</div>
+  <div class="xsec">Regression Statistics</div><table class="xt rs">
+  <tr><td>Multiple R</td><td>${c('multR')}</td></tr><tr><td>R Square</td><td>${c('R2')}</td></tr><tr><td>Adjusted R Square</td><td>${c('adjR2')}</td></tr>
+  <tr><td>Standard Error</td><td>${c('se')}</td></tr><tr><td>Observations</td><td>${c('n')}</td></tr></table>
+  <div class="xsec">ANOVA</div><table class="xt"><tr><th></th><th>df</th><th>SS</th><th>MS</th><th>F</th><th>Significance F</th></tr>
+  <tr><td>Regression</td><td>${c('df_reg')}</td><td>${c('ss_reg')}</td><td>${c('ms_reg')}</td><td>${c('f')}</td><td>${c('sigf')}</td></tr>
+  <tr><td>Residual</td><td>${c('df_res')}</td><td>${c('ss_res')}</td><td>${c('ms_res')}</td><td></td><td></td></tr>
+  <tr><td>Total</td><td>${c('df_tot')}</td><td>${c('ss_tot')}</td><td></td><td></td><td></td></tr></table>
+  <table class="xt" style="margin-top:12px"><tr><th></th><th>Coefficients</th><th>Standard Error</th><th>t Stat</th><th>P-value</th><th>Lower 95%</th><th>Upper 95%</th></tr>`;
+  M.coefs.forEach((co,i)=>{h+=`<tr><td>${co.name}</td><td>${c('b'+i)}</td><td>${c('se'+i)}</td><td>${c('t'+i)}</td><td>${c('p'+i)}</td><td>${c('lo'+i)}</td><td>${c('hi'+i)}</td></tr>`});
+  h+=`</table>`;
+  if(opts.desc&&M.desc){h+=`<div class="xsec">Descriptive statistics</div><table class="xt"><tr><th>Variable</th><th>Mean</th><th>Std. Deviation</th></tr>${M.desc.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>`}
+  return h+`</div></div>`;
+}
+
+/* ================= t-curve ================= */
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function drawT(cv,{df,tail,crit,t}){
+  const d=Math.min(window.devicePixelRatio||1,2),W=cv.clientWidth||600,H=W/3;cv.width=W*d;cv.height=H*d;const g=cv.getContext('2d');g.scale(d,d);
+  const xmin=-4.5,xmax=4.5,X=x=>(x-xmin)/(xmax-xmin)*W,ymax=tpdf(0,df)*1.15,Y=y=>H-26-(y/ymax)*(H-40);
+  g.clearRect(0,0,W,H);const ink=cssv('--ink'),mut=cssv('--muted'),bad=cssv('--bad'),acc=cssv('--accent');
+  const shade=(a,b)=>{g.beginPath();g.moveTo(X(a),Y(0));for(let x=a;x<=b;x+=0.02)g.lineTo(X(x),Y(tpdf(x,df)));g.lineTo(X(b),Y(0));g.closePath();g.fillStyle=bad;g.globalAlpha=.28;g.fill();g.globalAlpha=1};
+  const c=Math.abs(crit);
+  if(tail==='right')shade(Math.min(c,xmax),xmax);else if(tail==='left')shade(xmin,Math.max(-c,xmin));else{shade(xmin,-c);shade(c,xmax)}
+  g.strokeStyle=ink;g.lineWidth=2;g.beginPath();for(let x=xmin;x<=xmax;x+=0.02){const px=X(x),py=Y(tpdf(x,df));x===xmin?g.moveTo(px,py):g.lineTo(px,py)}g.stroke();
+  g.strokeStyle=mut;g.lineWidth=1;g.beginPath();g.moveTo(0,Y(0));g.lineTo(W,Y(0));g.stroke();
+  g.font='12px IBM Plex Mono, monospace';g.fillStyle=mut;g.textAlign='center';
+  const cs=tail==='left'?[-c]:tail==='right'?[c]:[-c,c];cs.forEach(v=>{if(v>=xmin&&v<=xmax){g.fillText(v.toFixed(3),X(v),H-8)}});
+  g.fillText('0',X(0),H-8);
+  const tx=Math.max(xmin+0.05,Math.min(xmax-0.05,t));g.strokeStyle=acc;g.lineWidth=3;g.beginPath();g.moveTo(X(tx),Y(0));g.lineTo(X(tx),14);g.stroke();
+  g.fillStyle=acc;g.font='700 13px Atkinson Hyperlegible, sans-serif';g.textAlign=tx>2?'right':'left';
+  g.fillText(`t = ${t.toFixed(3)}${t!==tx?' (off the chart)':''}`,X(tx)+(tx>2?-6:6),16);
+  g.fillStyle=bad;g.textAlign='left';g.font='12px Atkinson Hyperlegible, sans-serif';g.fillText('shaded = reject H₀',8,16);
+}
+
+/* ================= Content ================= */
+const V=M=>M.v;
+const tc34=tinv(0.975,34),t8_95=tinv(0.95,8),t34_05=tinv(0.05,34),t33_95=tinv(0.95,33);
+const WGb=WG.v.b1,WGse=WG.v.se1,WGt=(WGb-0.05)/WGse;
+const BSt50=(BS.v.b1-50)/BS.v.se1;
+
+const LESSONS=[
+/* ---------- A1 ---------- */
+{id:'A1',part:'A',title:'Degrees of freedom',
+ rule:'Regression df = k · Residual df = n − k − 1 · Total df = n − 1.',
+ idea:`<p>Every regression output has a <b>df</b> column with three rows. It counts how many independent pieces of information each row is built on.</p>
+ <ul><li><b>Regression df = k</b>, the number of predictors (X variables). A simple regression has k = 1.</li>
+ <li><b>Residual df = n − k − 1</b>. You start with n observations and lose one for every coefficient you estimate, and the intercept counts as one.</li>
+ <li><b>Total df = n − 1</b>. The two rows above always add up to it.</li></ul>
+ <p>Why it matters: residual df feeds MSE, the standard error, every t-test and every critical value. If it's wrong, everything after it is wrong. Exams often blank this column, or blank n and expect you to recover it from the df.</p>`,
+ where:{model:'cars',cells:{df_reg:'hl',df_res:'hl',df_tot:'hl',n:'s1'},
+  formula:`Regression = <span class="chl">k</span> &nbsp;·&nbsp; Residual = <span class="c1">n</span> − k − 1 &nbsp;·&nbsp; Total = <span class="c1">n</span> − 1`,
+  note:`<p>The highlighted cells are the df column. <span class="c1"><b>Observations</b></span> (outlined in blue) is n. Count the predictors from the coefficient table: every row except the Intercept is one predictor.</p>`},
+ worked:{model:'cars',prompt:`<p><b>Used-car pricing.</b> Ten cars, with price regressed on odometer reading. The df column is hidden. Fill it in.</p>`,
+  cells:{df_reg:'qhl',df_res:'qhl',df_tot:'qhl'},
+  steps:[
+   {h:'Count the predictors',b:`The coefficient table has one row besides the Intercept: Odometer Reading. So k = 1.`,calc:'Regression df = k = 1',show:['df_reg']},
+   {h:'Residual df',b:`Start from n = 10 observations. Subtract one for the slope and one for the intercept.`,calc:'Residual df = n − k − 1 = 10 − 1 − 1 = 8',show:['df_res'],write:'Residual df = n − k − 1 = 10 − 1 − 1 = 8.'},
+   {h:'Total df, and the check',b:`Total is n − 1. Check that the two rows add up to it.`,calc:'Total df = n − 1 = 9   (1 + 8 = 9 ✓)',show:['df_tot']},
+   {h:'Working backwards',b:`Exams often hide n. If Total df = 9, then n = 10. If a simple regression shows Residual df = 8, then n = 8 + 2 = 10. You'll do this again in the tests.`}
+  ]},
+ guided:{model:'bm',intro:`<p><b>Bendrix.</b> Monthly overhead regressed on machine hours <i>and</i> production runs, over 36 months. Fill a, b and c.</p>`,
+  cells:{df_reg:'L:a',df_res:'L:b',df_tot:'L:c',f:'hide',sigf:'hide',ms_reg:'hide',ms_res:'hide'},
+  items:[
+   {id:'a',type:'num',prompt:'Regression df',ans:2,abs:0.01,fill:'df_reg',
+    mistakes:[{v:1,msg:'Count the coefficient rows again. MachHrs and ProdRuns are both predictors, so k = 2.'},{v:3,msg:'The Intercept isn\'t a predictor. Only count the X variables.'}],
+    hints:['Count the rows in the coefficient table, excluding the Intercept.']},
+   {id:'b',type:'num',prompt:'Residual df',ans:33,abs:0.01,fill:'df_res',
+    mistakes:[{v:35,msg:'That\'s n − 1, the Total row. The residual row also subtracts each estimated coefficient.'},{v:34,msg:'You subtracted the predictors but not the intercept. n − k − 1 = 36 − 2 − 1.'},{v:36,msg:'That\'s n itself. Residual df subtracts k + 1 from n.'}],
+    hints:['Residual df = n − k − 1.','n = 36 and k = 2.']},
+   {id:'c',type:'num',prompt:'Total df',ans:35,abs:0.01,fill:'df_tot',mistakes:[{v:36,msg:'Total df is n − 1, not n.'}],hints:['It should equal a + b.']},
+   {id:'d',type:'num',prompt:'A different <b>simple</b> regression output shows Residual df = 412. How many observations does it have?',ans:414,abs:0.01,
+    mistakes:[{v:413,msg:'413 would be the Total df. In a simple regression, Residual df = n − 2, so n = 412 + 2.'},{v:412,msg:'That\'s the residual df itself. Add back what was subtracted.'}],hints:['Simple regression means k = 1, so Residual df = n − 2.']}
+  ]}},
+/* ---------- A2 ---------- */
+{id:'A2',part:'A',title:'Sums of squares and mean squares',
+ rule:'SST = SSR + SSE · MS = SS ÷ its own df · SST = (n − 1)·S_Y².',
+ idea:`<p>The <b>SS</b> column splits the variation in Y into two parts.</p>
+ <ul><li><b>SST</b> (Total): how far the Y values sit from their mean, squared and added up: Σ(Y − Ȳ)².</li>
+ <li><b>SSR</b> (Regression): the part your line explains: Σ(Ŷ − Ȳ)².</li>
+ <li><b>SSE</b> (Residual): the part left over: Σ(Y − Ŷ)².</li></ul>
+ <p>They always satisfy <b>SST = SSR + SSE</b>, so any two give you the third.</p>
+ <p><b>Mean squares</b> divide each SS by its own df: <b>MSR = SSR / k</b> and <b>MSE = SSE / (n − k − 1)</b>. The Total row has no mean square.</p>
+ <p>One more route the papers use: if SST is blank but you have the standard deviation of Y from the descriptive statistics, then <b>SST = (n − 1)·S_Y²</b>.</p>`,
+ where:{model:'cars',cells:{ss_res:'hl',ms_reg:'hl',ms_res:'hl',ss_tot:'s1',ss_reg:'s2',df_reg:'s3',df_res:'s3'},
+  formula:`<span class="chl">SSE</span> = <span class="c1">SST</span> − <span class="c2">SSR</span><br><span class="chl">MSR</span> = <span class="c2">SSR</span> / <span class="c3">df_reg</span> &nbsp;·&nbsp; <span class="chl">MSE</span> = SSE / <span class="c3">df_res</span>`,
+  note:`<p>Mean squares sit next to the sums of squares, and each one uses the df from its own row.</p>`},
+ worked:{model:'cars',prompt:`<p><b>Used cars.</b> SSR = 150.1405 and SST = 188.1. Find SSE, MSR and MSE.</p>`,
+  cells:{ss_res:'qhl',ms_reg:'qhl',ms_res:'qhl',f:'q',sigf:'q',se:'q'},
+  steps:[
+   {h:'SSE from the identity',b:'The total splits into explained and unexplained.',calc:'SSE = SST − SSR = 188.1 − 150.1405 = 37.9595',show:['ss_res'],xl:['=188.1-150.1405']},
+   {h:'MSR',b:'Divide SSR by the regression df (k = 1).',calc:'MSR = 150.1405 / 1 = 150.1405',show:['ms_reg'],xl:['=150.1405/1']},
+   {h:'MSE',b:'Divide SSE by the residual df (8). Dividing by n or n − 1 is the common slip.',calc:'MSE = 37.9595 / 8 = 4.7449',show:['ms_res'],xl:['=37.9595/8'],write:'MSE = SSE / (n − k − 1) = 37.9595 / 8 = 4.745.'},
+   {h:'Another route to SST',b:'The standard deviation of price is 4.5717. Square it to get the variance, then multiply by n − 1.',calc:'SST = (10 − 1) × 4.5717² = 188.1  ✓',xl:['=(10-1)*4.5717^2']}
+  ]},
+ guided:{model:'bs',intro:`<p><b>Bendrix, simple regression:</b> overhead regressed on machine hours only (n = 36). The standard deviation of overhead is <b>10,916.81</b>. Fill a to d. You can type expressions like <code>35*10916.81^2</code>.</p>`,
+  cells:{ss_tot:'L:a',ss_reg:'L:b',ms_reg:'L:c',ms_res:'L:d',multR:'hide',R2:'hide',adjR2:'hide',se:'hide',f:'hide',sigf:'hide',t1:'hide',p1:'hide'},
+  items:[
+   {id:'a',type:'num',prompt:'SST, from the standard deviation',ans:BS.v.ss_tot,fill:'ss_tot',
+    mistakes:[{v:36*10916.81**2,msg:'Use n − 1 = 35, not n = 36.'},{v:35*10916.81,msg:'10,916.81 is a standard deviation. Square it first to get the variance.'}],
+    hints:['SST = (n − 1) × S_Y².','35 × 10916.81²']},
+   {id:'b',type:'num',prompt:'SSR',ans:BS.v.ss_reg,fill:'ss_reg',hints:['SST = SSR + SSE. SSE is shown in the Residual row.']},
+   {id:'c',type:'num',prompt:'MSR',ans:BS.v.ms_reg,fill:'ms_reg',hints:['MSR = SSR / regression df. How many predictors are there?']},
+   {id:'d',type:'num',prompt:'MSE',ans:BS.v.ms_res,fill:'ms_res',
+    mistakes:[{v:BS.v.ss_res/35,msg:'Divide by the residual df (n − k − 1 = 34), not n − 1.'},{v:BS.v.ss_res/36,msg:'Divide by the residual df (34), not n.'}],hints:['MSE = SSE / residual df.']}
+  ]}},
+/* ---------- A3 ---------- */
+{id:'A3',part:'A',title:'The F-test for the whole model',
+ rule:'F = MSR / MSE, right-tailed. Reject H₀ (all slopes = 0) when Significance F < α or F > F.INV.RT(α, k, n − k − 1).',
+ idea:`<p><b>F compares explained variation with unexplained variation</b>, each measured per degree of freedom: <b>F = MSR / MSE</b>.</p>
+ <p>It tests whether the model explains anything at all:</p>
+ <ul><li>H₀: every slope is 0 (β₁ = β₂ = … = 0). The model is useless.</li><li>H₁: at least one slope isn't 0.</li></ul>
+ <p>If F is close to 1, the model explains about as much as noise. A large F means it explains far more than it leaves behind.</p>
+ <p>Excel prints the p-value as <b>Significance F</b>. Reject H₀ when it's below α. To work it out yourself:</p>
+ <ul><li>p-value = <code>F.DIST.RT(F, k, n − k − 1)</code></li><li>critical value = <code>F.INV.RT(α, k, n − k − 1)</code>. Reject when F is larger.</li></ul>
+ <p>The F-test is always right-tailed.</p>`,
+ where:{model:'cars',cells:{f:'hl',sigf:'hl',ms_reg:'s1',ms_res:'s2',df_reg:'s3',df_res:'s3'},
+  formula:`<span class="chl">F</span> = <span class="c1">MSR</span> / <span class="c2">MSE</span> &nbsp;&nbsp; p = F.DIST.RT(F, <span class="c3">k</span>, <span class="c3">n − k − 1</span>)`,
+  note:`<p>F sits on the Regression row, and Significance F is its p-value.</p>`},
+ worked:{model:'cars',prompt:`<p><b>Used cars.</b> Is the pricing model significant at 5%?</p>`,cells:{f:'qhl',sigf:'qhl'},
+  steps:[
+   {h:'Hypotheses',b:'',calc:'H₀: β₁ = 0 (model explains nothing)   H₁: β₁ ≠ 0'},
+   {h:'Compute F',b:'Divide the two mean squares.',calc:'F = MSR / MSE = 150.1405 / 4.7449 = 31.64',show:['f'],xl:['=150.1405/4.7449']},
+   {h:'Compare',b:'Either use the p-value or the critical value. Both give the same decision.',calc:`p = F.DIST.RT(31.64, 1, 8) = 0.000496    F_crit = F.INV.RT(0.05, 1, 8) = ${finvrt(0.05,1,8).toFixed(3)}`,show:['sigf'],xl:['=F.DIST.RT(31.64, 1, 8)','=F.INV.RT(0.05, 1, 8)']},
+   {h:'Decide',b:'0.000496 < 0.05, and 31.64 > 5.318. Reject H₀.',write:'Since Significance F = 0.0005 < 0.05, we reject H₀. The model is significant: odometer reading explains a significant part of the variation in price.'}
+  ]},
+ guided:{model:'bs',intro:`<p><b>Bendrix, simple regression</b> (overhead on machine hours, n = 36). Test whether the model is significant at 5%.</p>`,
+  cells:{f:'L:a',sigf:'hide',multR:'hide',R2:'hide',adjR2:'hide',t1:'hide',p1:'hide',lo1:'hide',hi1:'hide'},
+  items:[
+   {id:'a',type:'num',prompt:'F statistic',ans:BS.v.f,fill:'f',
+    mistakes:[{v:1/BS.v.f,msg:'Flip it. It\'s explained over unexplained: MSR / MSE.'},{v:BS.v.ss_reg/BS.v.ss_res,msg:'Use the mean squares, not the sums of squares.'}],hints:['F = MSR / MSE.']},
+   {id:'b',type:'num',prompt:'Critical F at 5%. Excel: <code>F.INV.RT(α, k, n − k − 1)</code>',ans:finvrt(0.05,1,34),
+    mistakes:[{v:finvrt(0.05,34,1),msg:'The df are the wrong way round. Numerator = k = 1, denominator = 34.'}],hints:['Type F.INV.RT(0.05, 1, 34)']},
+   {id:'c',type:'mcq',prompt:'Your decision',options:[
+     {t:'Reject H₀. Machine hours explain a significant part of overhead.',ok:true},
+     {t:'Fail to reject H₀. The model isn\'t significant.',msg:'Compare again. F is about 22.6, which is far above the critical value of about 4.13.'},
+     {t:'Can\'t decide without the p-value.',msg:'The critical value is enough. If F is larger, reject.'}]}
+  ]}},
+/* ---------- A4 ---------- */
+{id:'A4',part:'A',title:'R², Multiple R and adjusted R²',
+ rule:'R² = SSR/SST = 1 − SSE/SST · r = ±√R² (sign of slope) · Adj R² = 1 − (1 − R²)(n − 1)/(n − k − 1).',
+ idea:`<p><b>R² = SSR / SST = 1 − SSE / SST.</b> It's the share of the variation in Y that the model explains, between 0 and 1. Exams ask it as <i>"what proportion of the variation in Y is explained by X?"</i></p>
+ <ul><li><b>Multiple R = √R².</b> It's always positive.</li>
+ <li>In a <b>simple</b> regression, the correlation <b>r = √R² with the sign of the slope</b>. A negative slope means a negative r.</li>
+ <li><b>Adjusted R² = 1 − (1 − R²)(n − 1)/(n − k − 1).</b> It penalises extra predictors, so it can fall when you add a weak variable. Plain R² never falls.</li></ul>
+ <p>A high R² doesn't prove causation or the right shape of model. It only measures fit.</p>`,
+ where:{model:'cars',cells:{R2:'hl',multR:'hl',adjR2:'hl',ss_reg:'s1',ss_tot:'s2',b1:'s3'},
+  formula:`<span class="chl">R²</span> = <span class="c1">SSR</span> / <span class="c2">SST</span> &nbsp;·&nbsp; <span class="chl">Multiple R</span> = √R² &nbsp;·&nbsp; r = sign(<span class="c3">b₁</span>) × √R²`,
+  note:`<p>The orange outline marks the slope. Its sign decides the sign of r.</p>`},
+ worked:{model:'cars',prompt:`<p><b>Used cars.</b> Find R², Multiple R, the correlation r, and adjusted R².</p>`,cells:{R2:'qhl',multR:'qhl',adjR2:'qhl'},
+  steps:[
+   {h:'R²',b:'Explained over total.',calc:'R² = 150.1405 / 188.1 = 0.7982',show:['R2'],xl:['=150.1405/188.1'],write:'79.8% of the variation in price is explained by odometer reading.'},
+   {h:'Multiple R',b:'',calc:'Multiple R = √0.7982 = 0.8934',show:['multR'],xl:['=SQRT(150.1405/188.1)']},
+   {h:'Correlation r',b:'The slope is −0.2668, which is negative, so r takes the negative root.',calc:'r = −0.8934'},
+   {h:'Adjusted R²',b:'n = 10, k = 1.',calc:'Adj R² = 1 − (1 − 0.7982) × 9/8 = 0.7730',show:['adjR2'],xl:['=1-(1-0.7982)*9/8']}
+  ]},
+ guided:{model:'bs',intro:`<p><b>Bendrix, simple regression</b> (overhead on machine hours, n = 36). Percentages are accepted, so 39.9% works as well as 0.399.</p>`,
+  cells:{R2:'L:a',multR:'L:b',adjR2:'L:c',se:'hide'},
+  items:[
+   {id:'a',type:'num',prompt:'R²',ans:BS.v.R2,pct:true,fill:'R2',mistakes:[{v:BS.v.ss_reg/BS.v.ss_res,msg:'Divide by SST, the total, not SSE.'}],hints:['R² = SSR / SST.']},
+   {id:'b',type:'num',prompt:'Multiple R',ans:BS.v.multR,fill:'multR',mistakes:[{v:BS.v.R2,msg:'That\'s R². Multiple R is its square root.'}],hints:['√R²']},
+   {id:'c',type:'num',prompt:'Adjusted R²',ans:BS.v.adjR2,pct:true,fill:'adjR2',
+    mistakes:[{v:1-(1-BS.v.R2)*35/33,msg:'Simple regression has k = 1, so the denominator is n − 2 = 34.'}],hints:['1 − (1 − R²) × (n − 1)/(n − k − 1)','1 − (1 − R²) × 35/34']},
+   {id:'d',type:'num',prompt:'Correlation r between overhead and machine hours',ans:BS.v.multR,
+    mistakes:[{v:-BS.v.multR,msg:'The slope (34.70) is positive, so r is positive.'}],hints:['Size = √R². Sign = sign of the slope.']}
+  ]}},
+/* ---------- A5 ---------- */
+{id:'A5',part:'A',title:'Standard error of the estimate',
+ rule:'Sₑ = √MSE, the typical residual in Y\'s units. Backwards: MSE = Sₑ², residual df = SSE / Sₑ².',
+ idea:`<p>Excel's <b>Standard Error</b> in the Regression Statistics block is <b>Sₑ = √MSE</b>. It's the typical size of a residual, in Y's own units: roughly how far actual values sit from the line.</p>
+ <p>Don't confuse it with the <i>Standard Error column</i> in the coefficient table. That column measures how precisely each coefficient is estimated.</p>
+ <p>Exams use Sₑ in both directions:</p>
+ <ul><li><b>Forward:</b> Sₑ = √MSE.</li><li><b>Backward:</b> MSE = Sₑ². Then SSE = Sₑ² × (n − k − 1), or residual df = SSE / Sₑ². That last one is how you recover a hidden n.</li></ul>`,
+ where:{model:'cars',cells:{se:'hl',ms_res:'s1',se0:'s3',se1:'s3'},
+  formula:`<span class="chl">Sₑ</span> = √<span class="c1">MSE</span>`,
+  note:`<p>The orange-outlined cells are coefficient standard errors. They're a different quantity, so don't mix them up with Sₑ.</p>`},
+ worked:{model:'cars',prompt:`<p><b>Used cars.</b> Find the standard error of the estimate and say what it means.</p>`,cells:{se:'qhl'},
+  steps:[
+   {h:'Compute',b:'',calc:'Sₑ = √MSE = √4.7449 = 2.1783',show:['se'],xl:['=SQRT(4.7449)']},
+   {h:'Interpret in Y\'s units',b:'Price is in ₹10,000s, so 2.1783 is about ₹21,783.',write:'The model\'s predicted prices typically miss actual prices by about ₹21,800.'},
+   {h:'Backwards',b:'Suppose MSE and the df were hidden, but you saw Sₑ = 2.1783 and SSE = 37.9595.',calc:'residual df = 37.9595 / 2.1783² = 8   →   n = 8 + 2 = 10',xl:['=37.9595/2.1783^2']}
+  ]},
+ guided:{model:'wg',intro:`<p><b>Immigrant wages.</b> Average weekly wage ($) regressed on the percentage of the population that speaks English, for 35 immigrant groups.</p>`,
+  cells:{se:'L:a',multR:'hide',adjR2:'hide'},
+  items:[
+   {id:'a',type:'num',prompt:'Standard error of the estimate',ans:WG.v.se,fill:'se',mistakes:[{v:WG.v.ms_res,msg:'That\'s MSE. Take its square root.'}],hints:['Sₑ = √MSE. MSE is in the Residual row.']},
+   {id:'b',type:'num',prompt:'Another <b>simple</b> regression output shows Sₑ = 8,584.739 and SSE = 2,505,723,500. How many observations?',ans:36,abs:0.6,
+    mistakes:[{v:34,abs:0.6,msg:'34 is the residual df. In a simple regression, n = residual df + 2.'},{v:35,abs:0.6,msg:'35 would be the Total df. Residual df = SSE / Sₑ², then add 2.'}],
+    hints:['Residual df = SSE / Sₑ².','2505723500 / 8584.739^2']}
+  ]}},
+/* ---------- A6 ---------- */
+{id:'A6',part:'A',title:'The coefficient table: t, SE and the interval',
+ rule:'t = b / SE(b) · 95% CI = b ± T.INV.2T(0.05, n − k − 1) × SE(b) · Simple regression: F = t².',
+ idea:`<p>Each coefficient row shows <b>b</b> (the estimate), its <b>standard error SE(b)</b>, the <b>t Stat</b>, the <b>P-value</b> and a <b>95% interval</b>.</p>
+ <ul><li><b>t = b / SE(b).</b> It tests H₀: β = 0. Any two of b, SE and t give you the third.</li>
+ <li><b>P-value</b> = <code>T.DIST.2T(|t|, n − k − 1)</code>.</li>
+ <li><b>95% CI = b ± t_crit × SE(b)</b>, where t_crit = <code>T.INV.2T(0.05, n − k − 1)</code>. Use the t-distribution with the residual df, not 1.96.</li>
+ <li>In a <b>simple</b> regression, the slope's t² equals F. So √F gives you |t|.</li></ul>
+ <p>If the 95% interval doesn't contain 0, the coefficient is significant at 5%.</p>`,
+ where:{model:'cars',cells:{t1:'hl',lo1:'hl',hi1:'hl',b1:'s1',se1:'s2',df_res:'s3'},
+  formula:`<span class="chl">t</span> = <span class="c1">b</span> / <span class="c2">SE</span> &nbsp;·&nbsp; <span class="chl">CI</span> = <span class="c1">b</span> ± T.INV.2T(0.05, <span class="c3">df_res</span>) × <span class="c2">SE</span>`,
+  note:`<p>Every coefficient row works the same way. The intercept row uses its own b and SE.</p>`},
+ worked:{model:'cars',prompt:`<p><b>Used cars.</b> Find the slope's t Stat and its 95% confidence interval.</p>`,cells:{t1:'qhl',lo1:'qhl',hi1:'qhl',p1:'q'},
+  steps:[
+   {h:'t Stat',b:'',calc:'t = −0.26682 / 0.047434 = −5.625',show:['t1'],xl:['=-0.26682/0.047434', '=T.DIST.2T(5.625, 8)']},
+   {h:'Cross-check with F',b:'In a simple regression, t² = F.',calc:'(−5.625)² = 31.64 = F  ✓',xl:['=(-5.625)^2']},
+   {h:'Critical t',b:'Two-sided 95% with residual df = 8.',calc:'t_crit = T.INV.2T(0.05, 8) = 2.306',xl:['=T.INV.2T(0.05, 8)']},
+   {h:'Interval',b:'',calc:'−0.26682 ± 2.306 × 0.047434 = (−0.3762, −0.1574)',show:['lo1','hi1','p1'],xl:['=-0.26682-T.INV.2T(0.05,8)*0.047434', '=-0.26682+T.INV.2T(0.05,8)*0.047434'],write:'With 95% confidence, each extra 1,000 km lowers the expected price by between ₹1,574 and ₹3,762.'}
+  ]},
+ guided:{model:'bs',intro:`<p><b>Bendrix, simple regression</b> (overhead on machine hours, n = 36). The MachHrs standard error and interval are hidden.</p>`,
+  cells:{se1:'L:a',lo1:'L:b',hi1:'L:c',p1:'hide'},
+  items:[
+   {id:'a',type:'num',prompt:'Standard error of the MachHrs coefficient',ans:BS.v.se1,fill:'se1',
+    mistakes:[{v:BS.v.b1*BS.v.t1,msg:'Rearrange t = b / SE, so SE = b / t.'}],hints:['SE = b / t.']},
+   {id:'b',type:'num',prompt:'Lower 95% limit',ans:BS.v.lo1,fill:'lo1',
+    mistakes:[{v:BS.v.b1-1.96*BS.v.se1,msg:'That uses 1.96 from the normal distribution. With 34 df, use T.INV.2T(0.05, 34) ≈ 2.032.'},{v:BS.v.b1-tinv(0.95,34)*BS.v.se1,msg:'That\'s a one-tailed value. A two-sided 95% interval puts 2.5% in each tail.'}],
+    hints:['b − T.INV.2T(0.05, 34) × SE','34.70224 − T.INV.2T(0.05,34)*7.299902']},
+   {id:'c',type:'num',prompt:'Upper 95% limit',ans:BS.v.hi1,fill:'hi1',mistakes:[{v:BS.v.b1+1.96*BS.v.se1,msg:'Use the t critical value with 34 df, not 1.96.'}],hints:['b + T.INV.2T(0.05, 34) × SE']}
+  ]}},
+/* ---------- B1 ---------- */
+{id:'B1',part:'B',title:'Turning a claim into hypotheses',
+ rule:'Equality always sits in H₀. Equality claims (≥, ≤, =) are H₀. Strict claims (>, <, ≠) are H₁. The tail follows H₁.',
+ idea:`<p>Claim questions follow one rule: <b>the equality sign always goes in H₀.</b></p>
+ <p>First translate the words into a symbol. Then:</p>
+ <ul><li>If the claim includes equality (≥, ≤, =), <b>the claim is H₀</b>. You're testing whether the data can knock it down.</li>
+ <li>If the claim is strict (&gt;, &lt;, ≠), <b>the claim is H₁</b>. You need evidence for it.</li>
+ <li><b>The tail follows H₁:</b> "&lt;" is left-tailed, "&gt;" is right-tailed, "≠" is two-tailed.</li></ul>
+ <p>Watch the sign on "decrease" claims. "Price falls by more than 130" means the slope is <i>below</i> −130, so β &lt; −130.</p>`,
+ whereHtml:`<div class="tblwrap"><table class="plain"><tr><th>The question says</th><th>Symbol</th><th>Goes in</th></tr>
+ <tr><td>at least · no less than · a minimum of</td><td class="m">≥</td><td>H₀ (has equality)</td></tr>
+ <tr><td>at most · no more than · cannot exceed</td><td class="m">≤</td><td>H₀ (has equality)</td></tr>
+ <tr><td>equals · is · no effect</td><td class="m">=</td><td>H₀</td></tr>
+ <tr><td>more than · exceeds · over · above</td><td class="m">&gt;</td><td>H₁ → right-tailed</td></tr>
+ <tr><td>less than · below · under</td><td class="m">&lt;</td><td>H₁ → left-tailed</td></tr>
+ <tr><td>different from · has an effect · is related</td><td class="m">≠</td><td>H₁ → two-tailed</td></tr></table></div>
+ <p style="margin-top:14px">How the claims show up in the old papers:</p>
+ <ul><li>"…will the decrease in average price be <b>more than</b> INR 130 for every 100 m…"</li><li>"…Receipts increase by <b>at least</b> 6 million USD for every 1 million…"</li><li>"…a unit increase in volatile acidity <b>cannot</b> lead to a decrease in quality <b>by more than</b> 1 unit."</li></ul>`,
+ worked:{prompt:`<p>Three claims about a slope β, worked one at a time.</p>`,
+  steps:[
+   {h:'"The price drops by at least 0.4 per unit."',b:'A drop of at least 0.4 means the slope is −0.4 or lower: β ≤ −0.4. That includes equality, so the claim is H₀. H₁ is the opposite, and it points right.',calc:'H₀: β ≤ −0.4    H₁: β > −0.4    → right-tailed'},
+   {h:'"Grade 10 marks have no effect on salary."',b:'"No effect" means β = 0. That\'s equality, so the claim is H₀.',calc:'H₀: β = 0    H₁: β ≠ 0    → two-tailed'},
+   {h:'"Price drops by more than 0.3 per unit."',b:'More than a 0.3 drop means β < −0.3. That\'s strict, so the claim is H₁, and you need evidence for it.',calc:'H₀: β ≥ −0.3    H₁: β < −0.3    → left-tailed',write:'H₀: β₁ ≥ −0.3 vs H₁: β₁ < −0.3 (left-tailed test).'}
+  ]},
+ guided:{intro:`<p>Pick the correct hypotheses and tail for each claim.</p>`,
+  items:[
+   {id:'a',type:'mcq',prompt:'<b>Bendrix:</b> "Each extra machine hour adds <b>at least</b> ₹30 to overhead."',options:[
+     {t:'H₀: β ≥ 30, H₁: β < 30 (left-tailed)',ok:true},
+     {t:'H₀: β ≤ 30, H₁: β > 30 (right-tailed)',msg:'That would be the claim "at most ₹30". "At least" means ≥.'},
+     {t:'H₀: β = 30, H₁: β ≠ 30 (two-tailed)',msg:'The claim has a direction, so the test does too.'},
+     {t:'H₀: β < 30, H₁: β ≥ 30 (right-tailed)',msg:'Equality never goes in H₁.'}]},
+   {id:'b',type:'mcq',prompt:'<b>Wine:</b> "A unit increase in volatile acidity <b>cannot</b> decrease quality by <b>more than</b> 1 unit."',options:[
+     {t:'H₀: β ≥ −1, H₁: β < −1 (left-tailed)',ok:true},
+     {t:'H₀: β ≤ −1, H₁: β > −1 (right-tailed)',msg:'That treats "decreases by more than 1" as the claim. The word "cannot" flips it: the slope can\'t go below −1.'},
+     {t:'H₀: β ≥ 1, H₁: β < 1 (left-tailed)',msg:'A decrease is a negative slope, so the boundary is −1, not +1.'},
+     {t:'H₀: β = −1, H₁: β ≠ −1 (two-tailed)',msg:'The claim has a direction. Use a one-tailed test.'}]},
+   {id:'c',type:'mcq',prompt:'<b>Immigrant wages:</b> "Each extra percentage point of English speakers raises weekly wages by <b>more than</b> $0.05."',options:[
+     {t:'H₀: β ≤ 0.05, H₁: β > 0.05 (right-tailed)',ok:true},
+     {t:'H₀: β > 0.05, H₁: β ≤ 0.05 (left-tailed)',msg:'Equality has to sit in H₀. "More than" is strict, so the claim is H₁.'},
+     {t:'H₀: β ≥ 0.05, H₁: β < 0.05 (left-tailed)',msg:'That\'s the setup for "at least $0.05". Here the claim is strict.'},
+     {t:'H₀: β = 0, H₁: β ≠ 0 (two-tailed)',msg:'That\'s the default Excel test. The claim names 0.05 and a direction.'}]},
+   {id:'d',type:'mcq',prompt:'<b>JP Nagar:</b> "Distance to the metro <b>has an effect</b> on price."',options:[
+     {t:'H₀: β = 0, H₁: β ≠ 0 (two-tailed)',ok:true},
+     {t:'H₀: β ≥ 0, H₁: β < 0 (left-tailed)',msg:'"Has an effect" doesn\'t say which direction.'},
+     {t:'H₀: β ≠ 0, H₁: β = 0',msg:'Equality always goes in H₀.'}]}
+  ]}},
+/* ---------- B2 ---------- */
+{id:'B2',part:'B',title:'Putting the claim in the table\'s units',
+ rule:'Convert the claim into the table\'s units (per 1 unit of X, in Y\'s units). If you rescale the slope, rescale its SE by the same factor. t doesn\'t change.',
+ idea:`<p>A slope is measured <b>per one unit of X, in Y's units</b>. Claims are often stated in other units, so convert before you test.</p>
+ <p>Read the units off the variable names or the data dictionary. Then put the claim into the table's units:</p>
+ <ul><li>Claim per <b>100 units of X</b>, table per 1 unit: divide the claim by 100.</li>
+ <li>Y in <b>₹10,000s</b>, claim in ₹: divide the claim by 10,000.</li>
+ <li>X in <b>1,000 km</b>, claim per km: multiply the claim by 1,000.</li></ul>
+ <p>The other way is to rescale the slope <i>and</i> its SE together. Both get multiplied by the same factor, so t doesn't change. Rescaling only one of them is the classic mistake.</p>`,
+ where:{model:'cars',cells:{b1:'hl',se1:'hl'},desc:true,
+  formula:`claim in table units = claim × (size of 1 X unit) ÷ (size of 1 Y unit)`,
+  note:`<p>Used cars: Y is in <b>₹10,000s</b> and X is in <b>1,000 km</b>. So b = −0.26682 means "−0.26682 × ₹10,000 per 1,000 km", which is ₹2,668 per 1,000 km.</p>`},
+ worked:{model:'cars',prompt:`<p><b>Used cars.</b> The manager says: "The price drops by <b>at least ₹4 per km</b>." Write the claim in the table's units.</p>`,cells:{b1:'hl',se1:'hl'},
+  steps:[
+   {h:'Name the units',b:'X: 1 unit = 1,000 km. Y: 1 unit = ₹10,000.'},
+   {h:'Scale X',b:'₹4 per km over one X unit (1,000 km):',calc:'₹4 × 1,000 = ₹4,000 per 1,000 km',xl:['=4*1000']},
+   {h:'Scale Y',b:'Express ₹4,000 in ₹10,000s:',calc:'4,000 / 10,000 = 0.4',xl:['=4*1000/10000']},
+   {h:'Direction',b:'It\'s a drop, so the slope is negative. "At least" a 0.4 drop means β ≤ −0.4.',calc:'H₀: β₁ ≤ −0.4    H₁: β₁ > −0.4',write:'₹4 per km = ₹4,000 per 1,000 km = 0.4 in ₹10,000 units, so the claim is β₁ ≤ −0.4.'}
+  ]},
+ guided:{intro:`<p>Convert each claim into the units of its output. Keep the sign: drops are negative.</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'<b>Immigrant wages</b> (Y in $/week, X in percentage points): "wages rise by $0.5 for every <b>10</b> percentage points." What\'s the claimed slope per 1 percentage point?',ans:0.05,
+    mistakes:[{v:5,msg:'Divide by 10, don\'t multiply. One percentage point is a tenth of the claim\'s step.'},{v:0.5,msg:'That\'s per 10 points. The table is per 1 point.'}],hints:['Claim per 10 X units → divide by 10.']},
+   {id:'b',type:'num',prompt:'<b>Bendrix</b> (Y in ₹, X in machine hours): "every <b>100</b> machine hours add ₹3,000 to overhead." Claimed slope per machine hour?',ans:30,
+    mistakes:[{v:300000,msg:'Divide by 100, don\'t multiply.'},{v:3000,msg:'That\'s per 100 hours. The table is per hour.'}],hints:['₹3,000 ÷ 100']},
+   {id:'c',type:'num',prompt:'<b>Used cars</b> (Y in ₹10,000s, X in 1,000 km): "price falls by ₹1.5 per km." Claimed slope in table units?',ans:-0.15,
+    mistakes:[{v:0.15,msg:'Right size, but a fall means a negative slope.'},{v:-1500,msg:'You scaled X (×1,000) but not Y. Now divide by 10,000.'},{v:-15,msg:'Check the Y scaling: divide ₹1,500 by 10,000.'}],hints:['₹1.5 × 1,000 km = ₹1,500 per X unit.','₹1,500 in ₹10,000s = 0.15. Then add the sign.']},
+   {id:'d',type:'mcq',prompt:'JP Nagar reports the slope per metre. You rescale <b>both</b> the slope and its SE to "per 100 m". What happens to the t-statistic?',options:[
+     {t:'It doesn\'t change.',ok:true},{t:'It gets 100 times bigger.',msg:'The top and bottom of t = b / SE both scale by 100, so the factor cancels.'},{t:'It gets 100 times smaller.',msg:'The factor cancels: (100b)/(100·SE) = b/SE.'}]}
+  ]}},
+/* ---------- B3 ---------- */
+{id:'B3',part:'B',title:'Testing a slope against a claimed value',
+ rule:'t = (b − β₀)/SE(b), df = n − k − 1. Right tail: T.INV(1 − α, df). Left tail: T.INV(α, df). Two tails: ±T.INV.2T(α, df).',
+ idea:`<p>To test a claim about a slope, compare the estimate with the claimed value, measured in standard errors:</p>
+ <p class="formula">t = (b − β₀) / SE(b), &nbsp; df = n − k − 1</p>
+ <p>β₀ is the value in the claim, after you've converted the units. It's <b>not</b> 0. The t Stat in Excel only tests β = 0, so you have to compute this t yourself.</p>
+ <p>Critical values in Excel:</p>
+ <ul><li><b>Right-tailed</b> (H₁: &gt;): <code>T.INV(1 − α, df)</code>, which is positive.</li>
+ <li><b>Left-tailed</b> (H₁: &lt;): <code>T.INV(α, df)</code>, which is negative.</li>
+ <li><b>Two-tailed</b> (H₁: ≠): ±<code>T.INV.2T(α, df)</code>.</li></ul>
+ <p>Reject H₀ when t lands beyond the critical value on the H₁ side. Then <b>write the conclusion about the claim in plain words</b>. Exams award a mark for it.</p>`,
+ where:{model:'cars',cells:{b1:'s1',se1:'s2',df_res:'s3',t1:'hl'},
+  formula:`t = (<span class="c1">b</span> − β₀) / <span class="c2">SE</span> &nbsp; with <span class="c3">df_res</span> degrees of freedom`,
+  note:`<p>The highlighted t Stat assumes β₀ = 0. For any other claim, ignore it and compute your own t.</p>`},
+ worked:{model:'cars',prompt:`<p><b>Used cars.</b> Test the manager's claim "the price drops by at least ₹4 per km" at 5%. From B2, the claim in table units is β₁ ≤ −0.4.</p>`,cells:{b1:'s1',se1:'s2',df_res:'s3'},
+  steps:[
+   {h:'Hypotheses',b:'"At least" includes equality, so the claim is H₀.',calc:'H₀: β₁ ≤ −0.4    H₁: β₁ > −0.4    (right-tailed)'},
+   {h:'Test statistic',b:'',calc:'t = (−0.26682 − (−0.4)) / 0.047434 = 2.808',xl:['=(-0.26682-(-0.4))/0.047434']},
+   {h:'Critical value',b:'Right-tailed, α = 0.05, df = 8.',calc:`t_crit = T.INV(0.95, 8) = ${t8_95.toFixed(3)}     p = T.DIST.RT(2.808, 8) = ${(1-tcdf(2.808,8)).toFixed(4)}`,curve:{df:8,tail:'right',crit:t8_95,t:2.808},xl:['=T.INV(0.95, 8)','=T.DIST.RT(2.808, 8)']},
+   {h:'Decide and conclude',b:'2.808 > 1.860, so t is in the rejection region. Reject H₀.',write:'At 5% significance we reject the claim. The price falls by less than ₹4 per km of extra mileage.'}
+  ]},
+ guided:{model:'bs',intro:`<p><b>Claim 1, Bendrix</b> (simple regression, n = 36, output below): "Each extra machine hour adds <b>at least ₹50</b> to overhead." Test at 5%.</p>`,
+  cells:{b1:'s1',se1:'s2',df_res:'s3',t1:'hide',p1:'hide'},
+  items:[
+   {id:'a',type:'mcq',prompt:'Hypotheses',options:[{t:'H₀: β ≥ 50, H₁: β < 50 (left-tailed)',ok:true},{t:'H₀: β ≤ 50, H₁: β > 50 (right-tailed)',msg:'"At least ₹50" is β ≥ 50, with equality, so it\'s H₀.'},{t:'H₀: β = 0, H₁: β ≠ 0',msg:'That\'s Excel\'s default test. The claim is about 50.'}]},
+   {id:'b',type:'num',prompt:'t statistic',ans:BSt50,
+    mistakes:[{v:-BSt50,msg:'Check the order: (b − β₀), so (34.70 − 50) / SE, which comes out negative.'},{v:BS.v.t1,msg:'That\'s Excel\'s t for β = 0. Subtract the claimed 50 first.'}],hints:['(34.70224 − 50) / 7.299902']},
+   {id:'c',type:'num',prompt:'Critical value (α = 0.05)',ans:t34_05,
+    mistakes:[{v:-tinv(0.975,34),msg:'That\'s the two-tailed value. A one-tailed test puts all 5% in one tail.'}],hints:['Left-tailed: T.INV(0.05, 34)']},
+   {id:'d',type:'mcq',prompt:'Conclusion',options:[{t:'Reject H₀. Machine hours add less than ₹50 each, so the claim is rejected.',ok:true},{t:'Fail to reject H₀. The claim stands.',msg:'t ≈ −2.10 is below the critical value of −1.69, so it\'s in the rejection region.'}],
+    curve:{df:34,tail:'left',crit:t34_05,t:BSt50}},
+   {id:'e',type:'num',prompt:`<b>Claim 2, immigrant wages</b> (n = 35, b = ${WGb.toFixed(5)}, SE = ${WGse.toFixed(6)}): "wages rise by <b>more than $0.05</b> per percentage point." Compute t.`,ans:WGt,
+    mistakes:[{v:WGb/WGse,msg:'Subtract the claimed 0.05 before dividing.'}],hints:[`(${WGb.toFixed(5)} − 0.05) / ${WGse.toFixed(6)}`]},
+   {id:'f',type:'num',prompt:'Critical value (α = 0.05)',ans:t33_95,mistakes:[{v:-t33_95,msg:'H₁ is "> 0.05", which is right-tailed, so the critical value is positive.'},{v:tinv(0.975,33),msg:'That\'s two-tailed. Use T.INV(0.95, 33).'}],hints:['Right-tailed: T.INV(0.95, 33)']},
+   {id:'g',type:'mcq',prompt:'Conclusion',options:[{t:'Reject H₀. There\'s evidence that wages rise by more than $0.05 per percentage point.',ok:true},{t:'Fail to reject H₀. No evidence for the claim.',msg:`t ≈ ${WGt.toFixed(2)} is above the critical value of ${t33_95.toFixed(2)}.`}],
+    curve:{df:33,tail:'right',crit:t33_95,t:WGt}}
+  ]}}
+];
+
+/* ---------------- Tests ---------------- */
+const jpT=((JP.v.b1*100)-(-130))/(JP.v.se1*100),jpCrit=tinv(0.05,412),hwT=(HW.v.b1-6)/HW.v.se1,hwCrit=tinv(0.02,58);
+const TESTS=[
+{id:'T1',title:'JP Nagar house prices',source:'DS2 old midterm, Question 1',model:'jp',
+ caseHtml:`<p>Data is collected on prices (INR per sq ft) of houses in JP Nagar and their distance (metres) from the nearest metro station. A simple regression explains Price_PSQFT using DIS_METRO_STN. Some cells of the output are missing. Use α = 0.05 unless stated otherwise.</p>`,
+ cells:{df_reg:'L:a',df_res:'L:b',df_tot:'L:c',R2:'L:d',t1:'L:e',lo1:'L:f',hi1:'L:g',multR:'hide',adjR2:'hide',n:'hide',ss_res:'hide',ms_reg:'hide',ms_res:'hide',sigf:'hide',t0:'hide',p0:'hide',p1:'hide',lo0:'hide',hi0:'hide'},
+ qs:[
+  {n:'1',tags:['A1','A2','A5'],pts:3,prompt:'Fill in the missing df column (a, b, c).',
+   items:[{id:'a',type:'num',prompt:'a: Regression df',ans:1,abs:0.01},{id:'b',type:'num',prompt:'b: Residual df',ans:412,abs:0.6},{id:'c',type:'num',prompt:'c: Total df',ans:413,abs:0.6}],
+   xl:['=2013.7079^2', '=(3058455103-1387787090)/2013.7079^2'],explain:`n is hidden, so recover it. MSE = Sₑ² = 2013.7079² = 4,055,019. SSE = SST − SSR = 3,058,455,103 − 1,387,787,090 = 1,670,668,013. Residual df = SSE / MSE = 412, so n = 414. That gives df = 1, 412, 413.`},
+  {n:'2',tags:['A3'],pts:2,prompt:'Is there a statistically significant relationship between Price_PSQFT and DIS_METRO_STN?',
+   items:[{id:'a',type:'num',prompt:'Critical F at 5%',ans:finvrt(0.05,1,412)},{id:'b',type:'mcq',prompt:'Decision',options:[{t:'Reject H₀. The relationship is significant.',ok:true},{t:'Fail to reject H₀.'}]}],
+   xl:['=F.INV.RT(0.05, 1, 412)', '=F.DIST.RT(342.2393, 1, 412)'],explain:`F = 342.24 and F_crit = F.INV.RT(0.05, 1, 412) = ${finvrt(0.05,1,412).toFixed(3)}. F is far larger, so reject H₀: β = 0. Distance to the metro significantly explains price.`},
+  {n:'3',tags:['A4'],pts:1,prompt:'What proportion of the variation in Price_PSQFT is explained by DIS_METRO_STN? (d)',
+   items:[{id:'a',type:'num',prompt:'d: R²',ans:JP.v.R2,pct:true}],xl:['=1387787090/3058455103'],explain:`R² = SSR / SST = 1,387,787,090 / 3,058,455,103 = ${JP.v.R2.toFixed(4)}, so ${(JP.v.R2*100).toFixed(1)}% of the variation.`},
+  {n:'4',tags:['A6'],pts:1,prompt:'Find the t Stat for DIS_METRO_STN. (e)',items:[{id:'a',type:'num',prompt:'e: t Stat',ans:JP.v.t1}],
+   xl:['=-1.4524/0.0785'],explain:`t = −1.4524 / 0.0785 = ${JP.v.t1.toFixed(3)}. Check: t² = ${(JP.v.t1**2).toFixed(1)} ≈ F = 342.24.`},
+  {n:'5',tags:['B1','B2','B3'],pts:4,prompt:'Is it possible to conclude that the decrease in average price per sq ft will be <b>more than INR 130 for every 100 metres</b> increase in distance from the nearest metro station?',
+   items:[
+    {id:'a',type:'mcq',prompt:'Hypotheses, with β per 100 m',options:[{t:'H₀: β ≥ −130, H₁: β < −130 (left-tailed)',ok:true},{t:'H₀: β ≤ −130, H₁: β > −130 (right-tailed)'},{t:'H₀: β ≥ 130, H₁: β < 130 (left-tailed)'},{t:'H₀: β = −130, H₁: β ≠ −130'}]},
+    {id:'b',type:'num',prompt:'Slope per 100 m',ans:JP.v.b1*100},
+    {id:'c',type:'num',prompt:'t statistic',ans:jpT,tol:0.012},
+    {id:'d',type:'num',prompt:'Critical value',ans:jpCrit},
+    {id:'e',type:'mcq',prompt:'Conclusion',options:[{t:'Reject H₀. Yes, the average price falls by more than ₹130 per 100 m.',ok:true},{t:'Fail to reject H₀. We can\'t conclude it falls by more than ₹130 per 100 m.'}]}],
+   xl:['=(-1.4524*100-(-130))/(0.0785*100)', '=T.INV(0.05, 412)'],explain:`"More than a ₹130 decrease" means β < −130 per 100 m, which is strict, so it's H₁. Per 100 m, b = −145.24 and SE = 7.85 (both ×100). t = (−145.24 + 130) / 7.85 = ${jpT.toFixed(3)}. Left-tailed critical value = T.INV(0.05, 412) = ${jpCrit.toFixed(3)}. Since ${jpT.toFixed(2)} < ${jpCrit.toFixed(2)}, reject H₀. The decrease is more than ₹130 per 100 m.`},
+  {n:'6',tags:['A6'],pts:2,prompt:'Construct the 95% confidence interval for the DIS_METRO_STN coefficient (f, g).',
+   items:[{id:'a',type:'num',prompt:'f: Lower 95%',ans:JP.v.lo1},{id:'b',type:'num',prompt:'g: Upper 95%',ans:JP.v.hi1}],
+   xl:['=-1.4524-T.INV.2T(0.05,412)*0.0785', '=-1.4524+T.INV.2T(0.05,412)*0.0785'],explain:`t_crit = T.INV.2T(0.05, 412) = ${tinv(0.975,412).toFixed(4)}. −1.4524 ± ${tinv(0.975,412).toFixed(4)} × 0.0785 = (${JP.v.lo1.toFixed(4)}, ${JP.v.hi1.toFixed(4)}) per metre.`}
+ ]},
+{id:'T2',title:'Hollywood receipts',source:'DS2 old exam, Question 1',model:'hw',
+ caseHtml:`<p>Data was collected for <b>60</b> Hollywood movies. Receipts are first-year box office receipts ($ millions), and ProdCost is total production cost ($ millions). A simple regression predicts Receipts from ProdCost. Fill the gaps and answer the questions.</p>`,
+ cells:{df_reg:'L:a',df_res:'L:b',df_tot:'L:c',ss_res:'L:d',ms_reg:'L:e',ms_res:'L:f',f:'L:g',R2:'L:h',se:'L:i',se1:'L:j',lo1:'L:k',hi1:'L:l',multR:'hide',adjR2:'hide',sigf:'hide',p0:'hide',p1:'hide',lo0:'hide',hi0:'hide'},
+ qs:[
+  {n:'1',tags:['A1','A2','A3'],pts:4,prompt:'Fill in the missing values in the ANOVA table (a to g).',
+   items:[{id:'a',type:'num',prompt:'a: Regression df',ans:1,abs:0.01},{id:'b',type:'num',prompt:'b: Residual df',ans:58,abs:0.01},{id:'c',type:'num',prompt:'c: Total df',ans:59,abs:0.01},
+     {id:'d',type:'num',prompt:'d: SSE',ans:HW.v.ss_res},{id:'e',type:'num',prompt:'e: MSR',ans:HW.v.ms_reg},{id:'f',type:'num',prompt:'f: MSE',ans:HW.v.ms_res},{id:'g',type:'num',prompt:'g: F',ans:HW.v.f}],
+   xl:['=49450.437-41002.165', '=(49450.437-41002.165)/58', '=41002.165/((49450.437-41002.165)/58)'],explain:`df: 1, 60 − 2 = 58, 59. SSE = 49,450.437 − 41,002.165 = 8,448.272. MSR = 41,002.165. MSE = 8,448.272 / 58 = ${HW.v.ms_res.toFixed(3)}. F = ${HW.v.f.toFixed(2)}. Check: 16.778² = ${(16.778**2).toFixed(2)}.`},
+  {n:'2',tags:['A4'],pts:1,prompt:'What percentage of the variation in Receipts is explained by ProdCost? (h)',items:[{id:'a',type:'num',prompt:'h: R²',ans:HW.v.R2,pct:true}],
+   xl:['=41002.165/49450.437'],explain:`R² = 41,002.165 / 49,450.437 = ${HW.v.R2.toFixed(4)}, so ${(HW.v.R2*100).toFixed(1)}%.`},
+  {n:'3',tags:['A5'],pts:1,prompt:'What is the standard error for the model? (i)',items:[{id:'a',type:'num',prompt:'i: Sₑ',ans:HW.v.se}],
+   xl:['=SQRT((49450.437-41002.165)/58)'],explain:`Sₑ = √MSE = √${HW.v.ms_res.toFixed(3)} = ${HW.v.se.toFixed(3)} ($ millions).`},
+  {n:'4',tags:['A6'],pts:1,prompt:'Find the standard error of the ProdCost coefficient. (j)',items:[{id:'a',type:'num',prompt:'j: SE(b₁)',ans:HW.v.se1}],
+   xl:['=7.092/16.778'],explain:`SE = b / t = 7.092 / 16.778 = ${HW.v.se1.toFixed(4)}.`},
+  {n:'5',tags:['B1','B3'],pts:4,prompt:'Test the hypothesis that Receipts increase by <b>at least 6 million USD</b> for every 1 million USD increase in ProdCost, at the <b>2%</b> significance level.',
+   items:[
+    {id:'a',type:'mcq',prompt:'Hypotheses',options:[{t:'H₀: β ≥ 6, H₁: β < 6 (left-tailed)',ok:true},{t:'H₀: β ≤ 6, H₁: β > 6 (right-tailed)'},{t:'H₀: β = 6, H₁: β ≠ 6'},{t:'H₀: β < 6, H₁: β ≥ 6'}]},
+    {id:'b',type:'num',prompt:'t statistic',ans:hwT,tol:0.012},
+    {id:'c',type:'num',prompt:'Critical value',ans:hwCrit},
+    {id:'d',type:'mcq',prompt:'Conclusion',options:[{t:'Fail to reject H₀. The data doesn\'t contradict the claim of at least $6M per $1M.',ok:true},{t:'Reject H₀. Receipts rise by less than $6M per $1M.'}]}],
+   xl:['=(7.092-6)/(7.092/16.778)', '=T.INV(0.02, 58)'],explain:`"At least 6" includes equality, so it's H₀: β ≥ 6, H₁: β < 6 (left-tailed). t = (7.092 − 6) / ${HW.v.se1.toFixed(4)} = ${hwT.toFixed(3)}. Critical value = T.INV(0.02, 58) = ${hwCrit.toFixed(3)}. t is positive, nowhere near the left tail, so we fail to reject. There's no evidence against the claim.`},
+  {n:'6',tags:['A6'],pts:2,prompt:'Give the 95% confidence interval for the ProdCost coefficient (k, l).',
+   items:[{id:'a',type:'num',prompt:'k: Lower 95%',ans:HW.v.lo1},{id:'b',type:'num',prompt:'l: Upper 95%',ans:HW.v.hi1}],
+   xl:['=7.092-T.INV.2T(0.05,58)*7.092/16.778', '=7.092+T.INV.2T(0.05,58)*7.092/16.778'],explain:`t_crit = T.INV.2T(0.05, 58) = ${tinv(0.975,58).toFixed(4)}. 7.092 ± ${tinv(0.975,58).toFixed(4)} × ${HW.v.se1.toFixed(4)} = (${HW.v.lo1.toFixed(3)}, ${HW.v.hi1.toFixed(3)}).`}
+ ]}
+];
+
+/* ================= State ================= */
+const ORDER=LESSONS.map(l=>l.id);
+const S={view:'lesson',id:'A1',step:0,wrev:{},ans:{},done:{},tests:{},unlockAll:false,submitted:{}};
+try{const sv=JSON.parse(localStorage.getItem('oc_progress')||'null');if(sv){S.done=sv.done||{};S.tests=sv.tests||{};S.unlockAll=!!sv.unlockAll;if(sv.id)S.id=sv.id;if(sv.view)S.view=sv.view}}catch(e){}
+function save(){try{localStorage.setItem('oc_progress',JSON.stringify({done:S.done,tests:S.tests,unlockAll:S.unlockAll,id:S.id,view:S.view}))}catch(e){}}
+const lessonById=id=>LESSONS.find(l=>l.id===id);
+function unlocked(id){if(S.unlockAll)return true;const i=ORDER.indexOf(id);if(i>=0)return i===0||!!S.done[ORDER[i-1]];return ORDER.every(x=>S.done[x])}
+
+/* ================= Navigation ================= */
+function renderNav(){
+  const item=(id,title,view)=>{const lock=!unlocked(id),cur=(S.view===view&&S.id===id);const mk=view==='lesson'?(S.done[id]?'✓':''):(S.tests[id]?`${S.tests[id].pct}%`:'');
+    return `<button class="navitem${cur?' cur':''}" data-go="${view}:${id}" ${lock?'disabled title="Finish the earlier lessons to unlock"':''}><span class="code">${id}</span><span class="ttl">${title}</span><span class="mk">${lock?'locked':mk}</span></button>`};
+  const g=(h,arr)=>`<div class="navgroup"><h4>${h}</h4>${arr.join('')}</div>`;
+  document.getElementById('nav').innerHTML=`<div class="brand">Output Court<span>Rebuild the output. Rule on the claim.</span></div>
+  <div class="navgroups">${g('Part A · Rebuild the output',LESSONS.filter(l=>l.part==='A').map(l=>item(l.id,l.title,'lesson')))}
+  ${g('Part B · Rule on the claim',LESSONS.filter(l=>l.part==='B').map(l=>item(l.id,l.title,'lesson')))}
+  ${g('Exam tests',TESTS.map(t=>item(t.id,t.title,'test')))}
+  <div class="navgroup"><h4>Review</h4><button class="navitem${S.view==='progress'?' cur':''}" data-go="progress:"><span class="code">≡</span><span class="ttl">Progress and formula sheet</span></button></div></div>
+  <div class="navfoot"><label><input type="checkbox" id="unlockAll" ${S.unlockAll?'checked':''}> Preview mode: unlock everything</label></div>`;
+}
+
+/* ================= Item rendering + checking ================= */
+function akey(ctx,it){return ctx+'/'+it.id}
+function itemHTML(ctx,it,opts={}){
+  const a=S.ans[akey(ctx,it)]||{},graded=opts.graded,showLetter=opts.letter&&/^[a-z]$/.test(it.id);
+  let cls='item';if(a.status==='ok'||a.status==='shown')cls+=' ok';else if(a.status==='bad')cls+=' bad';
+  if(graded)cls=a.status==='ok'?'item ok':'item bad';
+  let h=`<div class="${cls}" data-item="${it.id}"><div class="prompt">${showLetter?`<span class="tag">${it.id}</span>`:''}${it.prompt}</div>`;
+  const lockIn=(a.status==='ok'||a.status==='shown'||graded);
+  if(it.type==='num'){
+    const v=a.raw||'';let pv='';try{const x=evalExpr(v);if(x!=null&&v.trim()&&!/^[-+]?[\d.,]+%?$/.test(v.trim()))pv='= '+nf(x)}catch(e){pv=v?String(e):''}
+    h+=`<div class="inrow"><input id="in-${ctx.replace(/\W/g,'_')}-${it.id}" data-in="${it.id}" value="${esc(v)}" inputmode="decimal" autocomplete="off" spellcheck="false" ${lockIn?'readonly':''} aria-label="Answer"><span class="preview" data-pv="${it.id}">${pv}</span></div>`;
+  }else{
+    h+=`<div class="opts" role="radiogroup">`;it.options.forEach((o,i)=>{let oc='opt';if(a.sel===i)oc+=' sel';if((a.status==='ok'||a.status==='shown'||graded)&&o.ok)oc+=' right';else if(a.sel===i&&(a.status==='bad'||graded&&!o.ok))oc+=' wrong';
+      h+=`<label class="${oc}"><input type="radio" name="r-${ctx.replace(/\W/g,'_')}-${it.id}" data-opt="${it.id}" value="${i}" ${a.sel===i?'checked':''} ${lockIn?'disabled':''}><span>${o.t}</span></label>`});h+=`</div>`;
+  }
+  if(!graded){
+    if(a.status==='ok')h+=`<div class="fb ok"><b>Correct.</b>${it.type==='num'?` ${nf(evalSafe(a.raw))}`:''}</div>`;
+    else if(a.status==='shown')h+=`<div class="fb ok"><b>Answer:</b> ${it.type==='num'?nf(it.ans):it.options.find(o=>o.ok).t}<span class="why">Work through it once more before moving on. Try reproducing it with the hints above.</span></div>`;
+    else if(a.status==='bad')h+=`<div class="fb bad"><b>Not yet.</b><span class="why">${a.msg}</span></div>`;
+    (a.hints||0)&&(it.hints||[]).slice(0,a.hints).forEach((t,i)=>{h+=`<div class="hint"><b>Hint ${i+1}.</b> ${t}</div>`});
+    if(a.status==='ok'&&it.curve)h+=`<canvas class="tcurve" data-curve='${JSON.stringify(it.curve)}'></canvas>`;
+    if(a.status!=='ok'&&a.status!=='shown'){h+=`<div class="itemfoot">${(it.hints||[]).length>(a.hints||0)?`<button class="btn ghost" data-hint="${it.id}">Show a hint</button>`:''}${(a.tries||0)>=2?`<button class="btn ghost" data-reveal="${it.id}">Show the answer</button>`:''}</div>`}
+  }else{
+    const exp=it.type==='num'?nf(it.ans):it.options.find(o=>o.ok).t;
+    h+=a.status==='ok'?`<div class="fb ok"><b>Correct.</b></div>`:`<div class="fb bad"><b>Expected:</b> ${exp}${a.msg?`<span class="why">${a.msg}</span>`:''}</div>`;
+  }
+  return h+`</div>`;
+}
+function xlHTML(arr){return `<div class="xlbox">${arr.map(f=>`<div class="xlrow"><span class="xltag">Excel</span><code>${esc(f)}</code><button class="btn ghost" data-tocalc="${esc(f)}">Open in calculator</button></div>`).join('')}</div>`}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function evalSafe(v){try{return evalExpr(v)}catch(e){return NaN}}
+function near(x,target,it,m){const tol=(m&&m.tol)||it.tol||0.008;const abs=(m&&m.abs!=null)?m.abs:(it.abs!=null?it.abs:null);
+  if(abs!=null)return Math.abs(x-target)<=abs;return Math.abs(x-target)<=Math.max(Math.abs(target)*tol,1e-9)}
+function checkItem(it,a){
+  if(it.type==='mcq'){if(a.sel==null)return{ok:false,msg:'Pick one option.'};const o=it.options[a.sel];return o.ok?{ok:true}:{ok:false,msg:o.msg||'That option doesn\'t match the claim.'}}
+  if(!a.raw||!a.raw.trim())return{ok:false,msg:'Enter a value.'};
+  let x;try{x=evalExpr(a.raw)}catch(e){return{ok:false,msg:'Couldn\'t read that: '+e+'.'}}
+  if(x==null||!isFinite(x))return{ok:false,msg:'That doesn\'t give a number.'};
+  if(it.pct&&/%\s*$/.test(a.raw.trim())===false&&Math.abs(x)>1&&near(x/100,it.ans,it))return{ok:true};
+  if(near(x,it.ans,it))return{ok:true};
+  for(const m of it.mistakes||[])if(near(x,m.v,it,m))return{ok:false,msg:m.msg};
+  if(Math.abs(it.ans)>1e-9&&near(-x,it.ans,it))return{ok:false,msg:'Right size, wrong sign. Check the direction.'};
+  const r=x/it.ans;if(isFinite(r)&&[10,100,1000,0.1,0.01,0.001].some(f=>Math.abs(r-f)/f<0.01))return{ok:false,msg:'The digits look right, but it\'s off by a power of 10. Check the units or a decimal place.'};
+  if(it.ans!==0&&Math.abs(x-it.ans)/Math.abs(it.ans)<0.05)return{ok:false,msg:'Very close. Check your rounding. Carry more decimals through the intermediate steps.'};
+  return{ok:false,msg:(it.hints&&it.hints.length)?'Not quite. Try a hint.':'Not quite. Check your working.'};
+}
+
+/* ================= Lesson view ================= */
+const STEPS=['The idea','Where it lives','Worked example','Your turn'];
+function lessonHTML(L){
+  const i=ORDER.indexOf(L.id),st=S.step;
+  let h=`<div class="eyebrow">Part ${L.part} · Lesson ${L.id} · ${i+1} of ${ORDER.length}</div><h1>${L.title}</h1>
+  <div class="stepper" role="tablist">${STEPS.map((s,k)=>`<button role="tab" data-step="${k}" class="${k===st?'cur':''}${k<st?' done':''}" aria-selected="${k===st}">${k+1} · ${s}</button>`).join('')}</div>`;
+  if(st===0){h+=`<div class="stack"><div class="panel">${L.idea}</div><div class="rule"><b>Key rule</b>${L.rule}</div></div>`}
+  if(st===1){
+    if(L.whereHtml)h+=`<div class="panel">${L.whereHtml}</div>`;
+    else{const W=L.where,M=MODELS[W.model];h+=`<div class="stack"><div class="formula">${W.formula}</div>${outputTable(M,W.cells,{desc:W.desc})}<div>${W.note}</div><p class="toolnote">Yellow cells are what this lesson computes. Outlined cells are what it's built from, colour-matched to the formula.</p></div>`}
+  }
+  if(st===2){const Wk=L.worked,n=S.wrev[L.id]||0,shown={};Wk.steps.slice(0,n).forEach(s=>(s.show||[]).forEach(id=>shown[id]='fill'));
+    const cells={...(Wk.cells||{}),...shown};
+    h+=`<div class="stack"><div class="panel">${Wk.prompt}</div>${Wk.model?outputTable(MODELS[Wk.model],cells,{desc:L.id==='B2'}):''}<div class="wsteps">`;
+    Wk.steps.slice(0,n).forEach((s,k)=>{h+=`<div class="wstep${k===n-1?' new':''}"><div class="wnum">${k+1}</div><div><h3>${s.h}</h3>${s.b?`<div>${s.b}</div>`:''}${s.calc?`<div class="calc">${s.calc}</div>`:''}${s.xl?xlHTML(s.xl):''}${s.write?`<div class="write">${s.write}</div>`:''}${s.curve?`<canvas class="tcurve" data-curve='${JSON.stringify(s.curve)}'></canvas>`:''}</div></div>`});
+    h+=`</div>${n<Wk.steps.length?`<div><button class="btn primary" data-wnext>${n===0?'Start the worked example':'Show the next step'}</button> <span class="toolnote">Step ${n} of ${Wk.steps.length}</span></div>`:`<div class="toolnote">That's the full solution. Now try one yourself.</div>`}</div>`;
+  }
+  if(st===3){const G=L.guided,ctx='L'+L.id;const cells={...(G.cells||{})};
+    G.items.forEach(it=>{const a=S.ans[akey(ctx,it)];if(it.fill&&a&&(a.status==='ok'||a.status==='shown'))cells[it.fill]='fill'});
+    h+=`<div class="stack"><div class="panel">${G.intro}<p class="toolnote" style="margin:0">Answers can be numbers or expressions, including Excel functions such as <code>SQRT(4.7449)</code>, <code>T.INV.2T(0.05, 8)</code> or <code>F.INV.RT(0.05, 1, 34)</code>. Or work it out in the <b>Calculator</b> (bottom right) and press <b>Use in answer</b>.</p></div>
+    ${G.model?outputTable(MODELS[G.model],cells,{desc:L.id==='A2'||L.id==='B3'}):''}
+    ${G.items.map(it=>itemHTML(ctx,it,{letter:!!G.model})).join('')}`;
+    const allOk=G.items.every(it=>{const a=S.ans[akey(ctx,it)];return a&&(a.status==='ok'||a.status==='shown')});
+    if(allOk){const nxt=ORDER[ORDER.indexOf(L.id)+1];h+=`<div class="banner"><h2>${L.id} unlocked for the tests</h2><p><b>Key rule:</b> ${L.rule}</p><button class="btn primary" data-go="${nxt?'lesson:'+nxt:'test:T1'}">${nxt?`Next lesson: ${lessonById(nxt).title}`:'Take Test 1: JP Nagar'}</button></div>`}
+    else h+=`<div><button class="btn primary" data-check>Check answers</button></div>`;
+    h+=`</div>`;
+  }
+  h+=`<div class="navrow"><button class="btn" data-step="${Math.max(0,st-1)}" ${st===0?'disabled style="visibility:hidden"':''}>Back</button>${st<3?`<button class="btn primary" data-step="${st+1}">Next: ${STEPS[st+1]}</button>`:''}</div>`;
+  return h;
+}
+
+/* ================= Test view ================= */
+function testHTML(T){
+  const M=MODELS[T.model],ctx='T'+T.id,sub=S.submitted[T.id];
+  let h=`<div class="eyebrow">Exam test · ${T.source}</div><h1>${T.title}</h1>
+  <div class="stack"><div class="panel case">${T.caseHtml}<p class="toolnote" style="margin:0">No hints here. Expressions and Excel functions work in every box. Submit when you're done to see your marks and the full working.</p></div>
+  ${outputTable(M,T.cells,{desc:true})}`;
+  if(sub){const r=S.tests[T.id];h+=`<div class="panel" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"><div class="score">${r.got.toFixed(1)} / ${r.max}</div><div><b>${r.pct}%</b><br><span class="toolnote">Weak spots are flagged below with a link back to the lesson.</span></div><button class="btn" data-retake="${T.id}" style="margin-left:auto">Try again</button></div>`}
+  T.qs.forEach(q=>{
+    h+=`<div class="qblock"><div class="qhead"><h2>Q${q.n}</h2><span class="toolnote">${q.tags.join(' · ')}</span><span class="pts">${q.pts} pt${q.pts>1?'s':''}</span></div><p>${q.prompt}</p>`;
+    h+=q.items.map(it=>itemHTML(ctx+'/'+q.n,it,{graded:!!sub})).join('');
+    if(sub){const qr=S.tests[T.id].q[q.n];h+=`<div class="panel"><b>${qr.got.toFixed(1)} / ${q.pts}.</b> ${q.explain}${q.xl?xlHTML(q.xl):''}${qr.got<q.pts?`<div style="margin-top:10px">${q.tags.map(t=>`<button class="btn" data-go="lesson:${t}">Review ${t}: ${lessonById(t).title}</button>`).join(' ')}</div>`:''}</div>`}
+    h+=`</div>`;});
+  if(!sub)h+=`<div><button class="btn primary" data-submit="${T.id}">Submit test</button></div>`;
+  return h+`</div>`;
+}
+function gradeTest(T){
+  const ctx='T'+T.id;let got=0,max=0;const q={},tag={};
+  T.qs.forEach(Q=>{let ok=0;Q.items.forEach(it=>{const k=akey(ctx+'/'+Q.n,it),a=S.ans[k]||(S.ans[k]={});const r=checkItem(it,a);a.status=r.ok?'ok':'bad';a.msg=r.ok?'':(it.type==='mcq'?'':r.msg&&!/hint/.test(r.msg)?r.msg:'');if(r.ok)ok++});
+    const g=Q.pts*ok/Q.items.length;got+=g;max+=Q.pts;q[Q.n]={got:g};Q.tags.forEach(t=>{tag[t]=tag[t]||{got:0,max:0};tag[t].got+=g;tag[t].max+=Q.pts})});
+  S.tests[T.id]={got,max,pct:Math.round(100*got/max),q,tag};S.submitted[T.id]=true;save();
+}
+
+/* ================= Progress view ================= */
+function progressHTML(){
+  const tagAgg={};Object.values(S.tests).forEach(r=>Object.entries(r.tag||{}).forEach(([t,v])=>{tagAgg[t]=tagAgg[t]||{got:0,max:0};tagAgg[t].got+=v.got;tagAgg[t].max+=v.max}));
+  let h=`<div class="eyebrow">Review</div><h1>Progress and formula sheet</h1><div class="stack"><div class="panel tblwrap"><table class="plain"><tr><th>Concept</th><th>Lesson</th><th>Test accuracy</th><th></th></tr>`;
+  LESSONS.forEach(L=>{const a=tagAgg[L.id],pct=a?Math.round(100*a.got/a.max):null;
+    h+=`<tr><td><b>${L.id}</b> ${L.title}</td><td>${S.done[L.id]?'<span style="color:var(--ok)">Passed</span>':'Not yet'}</td><td>${pct==null?'<span class="toolnote">No test yet</span>':`<div style="display:flex;gap:8px;align-items:center"><div class="bar"><i style="width:${pct}%"></i></div><span class="m">${pct}%</span></div>`}</td><td>${pct!=null&&pct<70?`<button class="btn ghost" data-go="lesson:${L.id}">Review</button>`:''}</td></tr>`});
+  h+=`</table></div><h2>Your formula sheet</h2><p class="toolnote">The key rule from every lesson you've passed.</p><div class="grid2">`;
+  const passed=LESSONS.filter(L=>S.done[L.id]);
+  h+=passed.length?passed.map(L=>`<div class="rule"><b>${L.id} · ${L.title}</b>${L.rule}</div>`).join(''):'<p>Pass a lesson to add its rule here.</p>';
+  h+=`</div><div class="panel"><h3>Start over</h3><p>Clears every lesson, answer and test score saved in this browser.</p><div id="resetBox"><button class="btn" data-reset1>Reset progress</button></div></div></div>`;
+  return h;
+}
+
+/* ================= Render + events ================= */
+const main=document.getElementById('main');
+function render(focusTop){
+  renderNav();
+  if(S.view==='lesson'){if(!unlocked(S.id))S.id=ORDER.find(x=>!S.done[x])||'A1';main.innerHTML=lessonHTML(lessonById(S.id))}
+  else if(S.view==='test'){const T=TESTS.find(t=>t.id===S.id);if(!T||!unlocked(T.id)){S.view='lesson';S.id='A1';return render()}main.innerHTML=testHTML(T)}
+  else main.innerHTML=progressHTML();
+  main.querySelectorAll('canvas[data-curve]').forEach(cv=>drawT(cv,JSON.parse(cv.dataset.curve)));
+  if(focusTop){window.scrollTo({top:0});main.focus({preventScroll:true})}
+  save();
+}
+function ctxOf(el){if(S.view==='lesson')return 'L'+S.id;const qb=el.closest('.qblock');const n=qb.querySelector('h2').textContent.slice(1);return 'T'+S.id+'/'+n}
+function itemOf(el,id){if(S.view==='lesson')return lessonById(S.id).guided.items.find(i=>i.id===id);const T=TESTS.find(t=>t.id===S.id);const n=el.closest('.qblock').querySelector('h2').textContent.slice(1);return T.qs.find(q=>q.n===n).items.find(i=>i.id===id)}
+document.addEventListener('click',e=>{
+  const go=e.target.closest('[data-go]');if(go&&!go.disabled){const[v,id]=go.dataset.go.split(':');S.view=v;if(id)S.id=id;if(v==='lesson')S.step=0;render(true);return}
+  const stp=e.target.closest('[data-step]');if(stp){S.step=+stp.dataset.step;render(true);return}
+  if(e.target.closest('[data-wnext]')){S.wrev[S.id]=(S.wrev[S.id]||0)+1;render();const last=main.querySelector('.wstep.new');last&&last.scrollIntoView({block:'nearest',behavior:'smooth'});return}
+  const hb=e.target.closest('[data-hint]');if(hb){const it=itemOf(hb,hb.dataset.hint),k=akey(ctxOf(hb),it),a=S.ans[k]||(S.ans[k]={});a.hints=(a.hints||0)+1;render();return}
+  const rv=e.target.closest('[data-reveal]');if(rv){const it=itemOf(rv,rv.dataset.reveal),k=akey(ctxOf(rv),it),a=S.ans[k]||(S.ans[k]={});a.status='shown';if(it.type==='num')a.raw=String(+it.ans.toPrecision(8));else a.sel=it.options.findIndex(o=>o.ok);a.hints=(it.hints||[]).length;afterCheck();render();return}
+  if(e.target.closest('[data-check]')){const L=lessonById(S.id),ctx='L'+L.id;L.guided.items.forEach(it=>{const k=akey(ctx,it),a=S.ans[k]||(S.ans[k]={});if(a.status==='ok'||a.status==='shown')return;const r=checkItem(it,a);if(a.raw==null&&a.sel==null){a.status=null;return}a.status=r.ok?'ok':'bad';a.msg=r.msg;if(!r.ok)a.tries=(a.tries||0)+1});afterCheck();render();return}
+  const sb=e.target.closest('[data-submit]');if(sb){gradeTest(TESTS.find(t=>t.id===sb.dataset.submit));render(true);return}
+  const rt=e.target.closest('[data-retake]');if(rt){const id=rt.dataset.retake;Object.keys(S.ans).filter(k=>k.startsWith('T'+id+'/')).forEach(k=>delete S.ans[k]);delete S.submitted[id];render(true);return}
+  if(e.target.closest('[data-reset1]')){document.getElementById('resetBox').innerHTML=`<p><b>Reset everything?</b> This can't be undone.</p><button class="btn" data-reset2 style="border-color:var(--bad);color:var(--bad)">Yes, reset</button> <button class="btn ghost" data-cancelreset>Cancel</button>`;return}
+  if(e.target.closest('[data-cancelreset]')){render();return}
+  if(e.target.closest('[data-reset2]')){S.done={};S.tests={};S.ans={};S.submitted={};S.wrev={};S.id='A1';S.view='lesson';S.step=0;render(true);return}
+});
+function afterCheck(){if(S.view!=='lesson')return;const L=lessonById(S.id),ctx='L'+L.id;if(L.guided.items.every(it=>{const a=S.ans[akey(ctx,it)];return a&&(a.status==='ok'||a.status==='shown')}))S.done[L.id]=true}
+document.addEventListener('input',e=>{
+  const inp=e.target.closest('[data-in]');if(inp){const it=itemOf(inp,inp.dataset.in),k=akey(ctxOf(inp),it),a=S.ans[k]||(S.ans[k]={});a.raw=inp.value;if(a.status==='bad')a.status=null;
+    const pv=main.querySelector(`[data-pv="${inp.dataset.in}"]`);if(pv&&inp.closest('.item')===pv.closest('.item')){let t='';try{const x=evalExpr(inp.value);if(x!=null&&!/^[-+]?[\d.,]+%?$/.test(inp.value.trim()))t='= '+nf(x)}catch(err){t=inp.value.trim()?String(err):''}pv.textContent=t}
+    else{const own=inp.closest('.item').querySelector('[data-pv]');if(own){let t='';try{const x=evalExpr(inp.value);if(x!=null&&!/^[-+]?[\d.,]+%?$/.test(inp.value.trim()))t='= '+nf(x)}catch(err){t=inp.value.trim()?String(err):''}own.textContent=t}}
+    return}
+  const op=e.target.closest('[data-opt]');if(op){const it=itemOf(op,op.dataset.opt),k=akey(ctxOf(op),it),a=S.ans[k]||(S.ans[k]={});a.sel=+op.value;if(a.status==='bad')a.status=null;
+    op.closest('.opts').querySelectorAll('.opt').forEach(l=>l.classList.toggle('sel',l.contains(op)));return}
+  if(e.target.id==='unlockAll'){S.unlockAll=e.target.checked;render()}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[data-in]')){e.preventDefault();const b=main.querySelector('[data-check],[data-submit]');if(S.view==='lesson'&&b)b.click()}});
+window.addEventListener('resize',()=>main.querySelectorAll('canvas[data-curve]').forEach(cv=>drawT(cv,JSON.parse(cv.dataset.curve))));
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>main.querySelectorAll('canvas[data-curve]').forEach(cv=>drawT(cv,JSON.parse(cv.dataset.curve))));
+/* ================= Calculator ================= */
+const XLF=[
+ ['T.INV.2T(α, df)','T.INV.2T(','Two-tailed critical t. Use for 95% intervals and ≠ tests.','T.INV.2T(0.05, 8) = 2.306'],
+ ['T.INV(p, df)','T.INV(','Left-tail quantile. Left-tailed test: T.INV(α, df). Right-tailed: T.INV(1 − α, df).','T.INV(0.95, 8) = 1.860'],
+ ['T.DIST.RT(t, df)','T.DIST.RT(','Right-tail p-value for a t statistic.','T.DIST.RT(2.808, 8) = 0.0115'],
+ ['T.DIST.2T(|t|, df)','T.DIST.2T(','Two-tailed p-value. Takes the absolute value of t.','T.DIST.2T(5.625, 8) = 0.0005'],
+ ['T.DIST(t, df, TRUE)','T.DIST(','Left-tail probability P(T ≤ t). Left-tailed p-value.','T.DIST(-2.1, 34, TRUE) = 0.022'],
+ ['F.INV.RT(α, k, n−k−1)','F.INV.RT(','Critical F for the overall or partial F-test.','F.INV.RT(0.05, 1, 8) = 5.318'],
+ ['F.DIST.RT(F, k, n−k−1)','F.DIST.RT(','p-value of an F statistic (Significance F).','F.DIST.RT(31.64, 1, 8) = 0.0005'],
+ ['NORM.S.INV(p)','NORM.S.INV(','Standard normal quantile (z).','NORM.S.INV(0.975) = 1.96'],
+ ['NORM.S.DIST(z, TRUE)','NORM.S.DIST(','Standard normal P(Z ≤ z).','NORM.S.DIST(1.96, TRUE) = 0.975'],
+ ['SQRT(x)','SQRT(','Square root, e.g. Sₑ = SQRT(MSE).','SQRT(4.7449) = 2.178'],
+ ['POWER(x, y)','POWER(','x to the power y. Same as x^y.','POWER(4.5717, 2) = 20.9'],
+ ['LN(x) · LOG(x) · EXP(x)','LN(','Natural log, base-10 log, eˣ. Used for log models.','LN(1.01) = 0.00995'],
+ ['ABS(x)','ABS(','Absolute value, e.g. ABS(t).','ABS(-5.625) = 5.625'],
+ ['ROUND(x, digits)','ROUND(','Round to a number of decimals.','ROUND(2.30600, 3) = 2.306']];
+const C={hist:[],last:null,res:null,target:null};
+const cin=document.getElementById('cin'),cres=document.getElementById('cres'),calc=document.getElementById('calc'),fab=document.getElementById('calcFab');
+document.getElementById('xllist').innerHTML=XLF.map(f=>`<button class="xlf" type="button" data-k="${f[1]}"><code>${f[0]}</code><span>${f[2]}</span><span class="m">${f[3]}</span></button>`).join('');
+function cfmt(v){if(!isFinite(v))return String(v);const a=Math.abs(v);if(a!==0&&(a<1e-6||a>=1e15))return v.toExponential(8).replace(/\.?0+e/,'e');return trimz(String(+v.toPrecision(12)))}
+function cpreview(){const v=cin.value;cres.classList.remove('err');if(!v.trim()){cres.textContent=C.res==null?'0':cfmt(C.res);return}try{const x=evalExpr(v);cres.textContent=x==null?'':cfmt(x)}catch(e){cres.textContent=String(e);cres.classList.add('err')}}
+function cins(t){const a=cin.selectionStart??cin.value.length,b=cin.selectionEnd??a;cin.value=cin.value.slice(0,a)+t+cin.value.slice(b);const p=a+t.length;cin.focus({preventScroll:true});cin.setSelectionRange(p,p);cpreview()}
+function ceq(){const v=cin.value.trim();if(!v)return;try{const x=evalExpr(v);if(x==null||!isFinite(x))throw 'No result';ANSV=x;C.res=x;C.hist.unshift([v,x]);C.hist=C.hist.slice(0,8);document.getElementById('chist').textContent=v+' =';cin.value=cfmt(x);cpreview();renderHist()}catch(e){cres.textContent=String(e);cres.classList.add('err')}}
+function renderHist(){document.getElementById('chistlist').innerHTML=C.hist.map(([e,x],i)=>`<button type="button" data-hist="${i}">${esc(e)} = <b>${cfmt(x)}</b></button>`).join('')||'<span class="toolnote">Results appear here.</span>'}
+function openCalc(expr){calc.hidden=false;fab.setAttribute('aria-expanded','true');if(expr!=null){cin.value=expr;cpreview()}updUse();setTimeout(()=>cin.focus({preventScroll:true}),0)}
+function closeCalc(){calc.hidden=true;fab.setAttribute('aria-expanded','false')}
+function updUse(){const el=C.target&&document.getElementById(C.target);const ok=!!(el&&!el.readOnly);const b=document.getElementById('cuseBtn');b.disabled=!ok;document.getElementById('cuseNote').hidden=ok}
+document.addEventListener('focusin',e=>{if(e.target.matches&&e.target.matches('[data-in]')){C.target=e.target.id;updUse()}});
+fab.addEventListener('click',()=>calc.hidden?openCalc():closeCalc());
+calc.addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});
+calc.addEventListener('click',e=>{
+  const k=e.target.closest('[data-k]');if(k){cins(k.dataset.k);if(k.classList.contains('xlf'))setCTab('keys');return}
+  const t=e.target.closest('[data-ctab]');if(t){setCTab(t.dataset.ctab);return}
+  const hb=e.target.closest('[data-hist]');if(hb){cin.value=C.hist[+hb.dataset.hist][0];cpreview();cin.focus();return}
+  if(e.target.closest('[data-cclose]')){closeCalc();fab.focus();return}
+  const a=e.target.closest('[data-act]');if(!a)return;const act=a.dataset.act;
+  if(act==='ac'){cin.value='';C.res=null;document.getElementById('chist').textContent='';cpreview();cin.focus()}
+  else if(act==='bs'){const p=cin.selectionStart??cin.value.length;if(p>0){cin.value=cin.value.slice(0,p-1)+cin.value.slice(p);cin.setSelectionRange(p-1,p-1)}cpreview();cin.focus()}
+  else if(act==='eq')ceq();
+  else if(act==='use'){let x;try{x=cin.value.trim()?evalExpr(cin.value):C.res}catch(err){x=null}const el=C.target&&document.getElementById(C.target);if(el&&x!=null&&isFinite(x)&&!el.readOnly){el.value=String(+x.toPrecision(10));el.dispatchEvent(new Event('input',{bubbles:true}));el.focus();el.classList.add('pulse')}}
+  else if(act==='copy'){let x;try{x=cin.value.trim()?evalExpr(cin.value):C.res}catch(err){}if(x!=null){const t=String(+x.toPrecision(10));const done=()=>{a.textContent='Copied';setTimeout(()=>a.textContent='Copy result',1200)};try{navigator.clipboard.writeText(t).then(done,()=>{cin.value=t;cin.select()})}catch(err){cin.value=t;cin.select()}}}
+});
+function setCTab(t){document.querySelectorAll('[data-ctab]').forEach(b=>b.classList.toggle('cur',b.dataset.ctab===t));document.getElementById('cpKeys').hidden=t!=='keys';document.getElementById('cpExcel').hidden=t!=='excel'}
+cin.addEventListener('input',cpreview);
+cin.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ceq()}if(e.key==='Escape'){closeCalc();fab.focus()}});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-tocalc]');if(b){openCalc(b.dataset.tocalc.replace(/^=/,''));setCTab('keys')}});
+
+if(!['lesson','test','progress'].includes(S.view))S.view='lesson';
+S.step=0;render();
+</script>
+</body>
+</html>
