@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="DS2 exam trainer: rebuild regression outputs and test claims, taught step by step.">
+<meta name="description" content="DS2 regression trainer, Sessions 1–9: 23 lessons, past-paper tests and a timed mock midterm.">
 <title>Output Court</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;600&display=swap">
 <style>
 [hidden]{display:none!important}
-img{max-width:100%}
+main:focus{outline:none}
 :root{
   --bg:#F1F4F2; --surface:#FFFFFF; --surface2:#EAEFEC; --ink:#17201C; --muted:#56635D; --line:#D3DBD7;
   --accent:#12684F; --accent-ink:#FFFFFF; --accent-soft:#DDEFE7;
@@ -143,6 +143,25 @@ table.plain th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;colo
 .bar i{display:block;height:100%;background:var(--accent)}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .case{max-width:72ch}
+/* exhibits, timer, figures, widgets */
+.xex{min-width:0}
+.xex .xt{margin-bottom:10px}
+.timerbar{position:sticky;top:calc(8px + env(safe-area-inset-top,0px));z-index:5;display:flex;gap:12px;align-items:center;background:var(--ink);color:var(--bg);border-radius:10px;padding:8px 14px;font-size:15px;width:max-content;max-width:100%}
+.timerbar b{font:700 20px var(--mono)}
+.timerbar.low{background:var(--bad)}
+.timerbar .btn.ghost{color:inherit;opacity:.8}
+canvas.rplot{width:100%;max-width:420px;aspect-ratio:2/1;display:block;margin:6px 0 10px;border-radius:8px;background:var(--surface2)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.vizrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.vizrow input[type=range]{width:min(320px,100%);accent-color:var(--accent)}
+.seg{display:flex;height:42px;border-radius:8px;overflow:hidden;font:600 13px var(--body)}
+.seg div{display:flex;align-items:center;justify-content:center;color:#fff;padding:0 6px;text-align:center;line-height:1.1}
+.figgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.figgrid figure{margin:0}.figgrid figcaption{font-size:14px;margin-top:2px}
+.figgrid canvas{width:100%;aspect-ratio:2/1;border-radius:8px;background:var(--surface2);display:block}
+.toggle{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.toggle button{border:0;background:var(--surface);color:var(--muted);padding:7px 12px;font:600 14px var(--body);cursor:pointer}
+.toggle button.cur{background:var(--accent);color:var(--accent-ink)}
 /* Excel formula lines */
 .xlbox{display:flex;flex-direction:column;gap:4px;margin:6px 0}
 .xlrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -718,23 +737,622 @@ const TESTS=[
  ]}
 ];
 
+/* ================= Part C–G helpers ================= */
+function pred(I,x0){const ssx=(I.n-1)*I.sx*I.sx,yh=I.b0+I.b1*x0,q=1/I.n+(x0-I.xbar)**2/ssx;return{yh,ssx,seM:I.se*Math.sqrt(q),seP:I.se*Math.sqrt(1+q)}}
+const CARSI={n:10,xbar:73.1,sx:15.3075,se:CARS.v.se,b0:56.20466,b1:-0.26682};
+const BSI={n:36,xbar:1456.111,sx:198.7815,se:BS.v.se,b0:48621.35,b1:34.70224};
+const HWI={n:60,xbar:8.74,sx:3.72,se:HW.v.se,b0:21.1,b1:7.092};
+const JPI={n:414,xbar:1083.886,sx:1262.110,se:2013.7079,b0:9170.2854,b1:-1.4524};
+const IMI={n:35,xbar:61.1343,sx:25.00183,se:1.26,b0:7.433,b1:0.07};
+const P67=pred(CARSI,67),t8=tinv(0.975,8),t8o=tinv(0.95,8);
+const PB=pred(BSI,1600),t34=tinv(0.975,34),t34o=tinv(0.95,34);
+const rtail=(x,df)=>1-tcdf(x,df);
+function r2pct(r){return r}
+
+/* seeded random numbers for figures */
+function rng(seed){let a=seed>>>0;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gauss(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function drawFig(cv,kind){
+  const d=Math.min(window.devicePixelRatio||1,2),W=cv.clientWidth||420,H=W/2;cv.width=W*d;cv.height=H*d;const g=cv.getContext('2d');g.scale(d,d);g.clearRect(0,0,W,H);
+  const ink=cssv('--ink'),mut=cssv('--muted'),acc=cssv('--accent'),r=rng(kind.length*97+11),pts=[];const N=70;
+  for(let i=0;i<N;i++){const x=i/(N-1);let e;
+    if(kind==='random')e=gauss(r)*0.9;
+    else if(kind==='curve')e=(Math.pow(x-0.5,2)*12-1)*1.1+gauss(r)*0.35;
+    else if(kind==='funnel')e=gauss(r)*(0.15+1.6*x);
+    else if(kind==='wave')e=Math.sin(x*11)*1.3+gauss(r)*0.25;
+    else e=0;pts.push([x,e])}
+  const L=34,R=10,T=10,B=24,X=x=>L+x*(W-L-R);
+  g.font='12px Atkinson Hyperlegible, sans-serif';g.fillStyle=mut;
+  if(kind==='qq'){const s=[];for(let i=0;i<N;i++)s.push(-Math.log(1-r()));s.sort((a,b)=>a-b);const m=s.reduce((a,b)=>a+b,0)/N,sd=Math.sqrt(s.reduce((a,b)=>a+(b-m)**2,0)/N);
+    const q=s.map((v,i)=>[ninv((i+0.5)/N),(v-m)/sd]);const Y=y=>T+(3.2-y)/(6.4)*(H-T-B),XX=x=>L+(x+3)/6*(W-L-R);
+    g.strokeStyle=mut;g.setLineDash([4,4]);g.beginPath();g.moveTo(XX(-3),Y(-3));g.lineTo(XX(3),Y(3));g.stroke();g.setLineDash([]);
+    g.fillStyle=acc;q.forEach(([a,b])=>{g.beginPath();g.arc(XX(a),Y(b),2.6,0,7);g.fill()});
+    g.fillStyle=mut;g.fillText('theoretical normal quantile →',L,H-6);g.save();g.translate(12,H-B);g.rotate(-Math.PI/2);g.fillText('residual quantile',0,0);g.restore();return}
+  const Y=y=>T+(3.2-y)/6.4*(H-T-B);
+  g.strokeStyle=mut;g.beginPath();g.moveTo(L,Y(0));g.lineTo(W-R,Y(0));g.stroke();
+  g.fillStyle=acc;pts.forEach(([x,e])=>{g.beginPath();g.arc(X(x),Y(e),2.6,0,7);g.fill()});
+  g.fillStyle=mut;g.fillText(kind==='wave'?'time order →':'X (or fitted value) →',L,H-6);g.save();g.translate(12,H-B);g.rotate(-Math.PI/2);g.fillText('residual',0,0);g.restore();
+}
+
+/* ================= Interactive widgets ================= */
+const VIZ={
+ bands(el){
+  el.innerHTML=`<div class="vizrow"><label for="vzX">Odometer X₀ (1,000 km): <b id="vzXv">67</b></label><input type="range" id="vzX" min="40" max="110" value="67" step="1"></div><canvas class="tcurve" id="vzC" style="aspect-ratio:2/1"></canvas><p id="vzT" class="toolnote" style="margin-top:8px"></p>`;
+  const cv=el.querySelector('#vzC'),sl=el.querySelector('#vzX');
+  const draw=()=>{const x0=+sl.value;el.querySelector('#vzXv').textContent=x0;
+   const d=Math.min(window.devicePixelRatio||1,2),W=cv.clientWidth||600,H=W/2;cv.width=W*d;cv.height=H*d;const g=cv.getContext('2d');g.scale(d,d);
+   const X=x=>34+(x-40)/70*(W-44),Y=y=>10+(56-y)/40*(H-34);const acc=cssv('--accent'),mut=cssv('--muted'),ink=cssv('--ink'),s1=cssv('--s1');
+   const band=(k,col)=>{g.beginPath();for(let x=40;x<=110;x+=1){const p=pred(CARSI,x),w=t8*(k?p.seP:p.seM);g.lineTo(X(x),Y(p.yh+w))}for(let x=110;x>=40;x-=1){const p=pred(CARSI,x),w=t8*(k?p.seP:p.seM);g.lineTo(X(x),Y(p.yh-w))}g.closePath();g.fillStyle=col;g.globalAlpha=k?.16:.32;g.fill();g.globalAlpha=1};
+   band(1,s1);band(0,acc);
+   g.strokeStyle=ink;g.lineWidth=2;g.beginPath();g.moveTo(X(40),Y(56.20466-0.26682*40));g.lineTo(X(110),Y(56.20466-0.26682*110));g.stroke();
+   g.fillStyle=ink;[[59,37],[92,31],[61,43],[72,39],[52,41],[67,39],[88,35],[62,40],[95,29],[83,33]].forEach(([x,y])=>{g.beginPath();g.arc(X(x),Y(y),3.5,0,7);g.fill()});
+   g.strokeStyle=mut;g.setLineDash([4,4]);g.beginPath();g.moveTo(X(73.1),10);g.lineTo(X(73.1),H-24);g.stroke();g.setLineDash([]);
+   g.strokeStyle=cssv('--bad');g.lineWidth=2;g.beginPath();g.moveTo(X(x0),10);g.lineTo(X(x0),H-24);g.stroke();
+   g.font='12px Atkinson Hyperlegible, sans-serif';g.fillStyle=mut;g.fillText('X̄ = 73.1',X(73.1)+4,22);g.fillText('Odometer (1,000 km) →',34,H-6);
+   const p=pred(CARSI,x0);el.querySelector('#vzT').innerHTML=`At X₀ = ${x0}: Ŷ = <b>${p.yh.toFixed(2)}</b>. <span style="color:var(--accent)">Confidence interval (average car) ±${(t8*p.seM).toFixed(2)}</span> · <span style="color:var(--s1)">Prediction interval (one car) ±${(t8*p.seP).toFixed(2)}</span> (₹10,000s). ${x0<52||x0>95?'<b>You are outside the observed range (52–95). Both intervals assume the line still holds here.</b>':''}`};
+  sl.addEventListener('input',draw);draw();
+ },
+ resid(el){el.innerHTML=`<div class="figgrid">${[['random','Healthy: no pattern, even spread around 0'],['curve','Curve: linearity fails. Wrong functional form'],['funnel','Funnel: constant variance fails (heteroscedasticity)'],['wave','Waves in time order: independence fails (autocorrelation)'],['qq','Bent Q-Q plot: normality fails (skewed errors)']].map(([k,t])=>`<figure><canvas data-fig="${k}"></canvas><figcaption>${t}</figcaption></figure>`).join('')}</div>`;el.querySelectorAll('canvas').forEach(c=>drawFig(c,c.dataset.fig))},
+ decomp(el){
+  const orders={m:[['MachHrs alone',0.399278,'var(--s1)'],['ProdRuns adds (part²)',0.866425-0.399278,'var(--accent)'],['Still unexplained',1-0.866425,'var(--muted)']],p:[['ProdRuns alone',0.270966,'var(--s2)'],['MachHrs adds (part²)',0.866425-0.270966,'var(--accent)'],['Still unexplained',1-0.866425,'var(--muted)']]};
+  el.innerHTML=`<div class="vizrow"><span>Enter first:</span><div class="toggle"><button data-o="m" class="cur">MachHrs</button><button data-o="p">ProdRuns</button></div></div><div class="seg" id="sg"></div><p id="sgT" style="margin-top:10px"></p>`;
+  const draw=o=>{const a=orders[o];el.querySelector('#sg').innerHTML=a.map(([t,v,c])=>`<div style="width:${v*100}%;background:${c}" title="${t}">${(v*100).toFixed(1)}%</div>`).join('');
+   const part2=a[1][1],rem=1-a[0][1],partial=Math.sqrt(part2/rem);
+   el.querySelector('#sgT').innerHTML=`Bar = all the variation in Overhead (SST). <b>${a[0][0]}</b> explains ${(a[0][1]*100).toFixed(1)}%. The second variable adds <b>part² = ${(part2*100).toFixed(1)}%</b> of the total. As a share of what was still unexplained (${(rem*100).toFixed(1)}%), that’s <b>partial² = ${(part2/rem*100).toFixed(1)}%</b>, so partial r = ${partial.toFixed(4)}. Final R² = 86.6% either way: only the credit split changes with the order.`;
+   el.querySelectorAll('[data-o]').forEach(b=>b.classList.toggle('cur',b.dataset.o===o))};
+  el.addEventListener('click',e=>{const b=e.target.closest('[data-o]');if(b)draw(b.dataset.o)});draw('m');
+ },
+ ovb(el){
+  el.innerHTML=`<div class="vizrow"><span>Omitted X₂ affects Y (β₂):</span><div class="toggle" data-g="b"><button data-v="1" class="cur">positive</button><button data-v="-1">negative</button></div></div>
+  <div class="vizrow"><span>X₂ moves with X₁ (δ₁, same sign as their correlation):</span><div class="toggle" data-g="d"><button data-v="1">positive</button><button data-v="-1" class="cur">negative</button></div></div><div class="rule" id="ovT"></div>`;
+  const st={b:1,d:-1};const draw=()=>{const s=st.b*st.d;el.querySelector('#ovT').innerHTML=`<b>Bias = β₂ × δ₁ is ${s>0?'positive':'negative'}</b>Dropping X₂ makes the X₁ coefficient ${s>0?'too high (overstated)':'too low (understated)'}. ${st.b===1&&st.d===-1?'This is Bendrix: ProdRuns raises overhead (β₂ = 883.6) and moves opposite to MachHrs (δ₁ = −0.01), so the simple MachHrs slope 34.70 understates the true 43.54.':''}`;
+   el.querySelectorAll('[data-g]').forEach(gp=>gp.querySelectorAll('button').forEach(b=>b.classList.toggle('cur',+b.dataset.v===st[gp.dataset.g])))};
+  el.addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;st[b.closest('[data-g]').dataset.g]=+b.dataset.v;draw()});draw();
+ },
+ inter(el){
+  el.innerHTML=`<div class="vizrow"><div class="toggle"><button data-m="0" class="cur">Gender + YearsExp</button><button data-m="1">+ Gender × YearsExp</button></div></div><canvas class="tcurve" style="aspect-ratio:2/1"></canvas><p class="toolnote" id="inT" style="margin-top:8px"></p>`;
+  const cv=el.querySelector('canvas');let m=0;
+  const L=[{M:[440769.6,11757.08],F:[440769.6-96986.8,11757.08]},{M:[383210.2,18239.88],F:[383210.2+34699.71,18239.88-15180.7]}];
+  const draw=()=>{const d=Math.min(window.devicePixelRatio||1,2),W=cv.clientWidth||600,H=W/2;cv.width=W*d;cv.height=H*d;const g=cv.getContext('2d');g.scale(d,d);
+   const X=x=>44+x/25*(W-54),Y=y=>10+(900000-y)/650000*(H-34);const mut=cssv('--muted');
+   g.strokeStyle=mut;g.beginPath();g.moveTo(44,H-24);g.lineTo(W-10,H-24);g.stroke();g.font='12px Atkinson Hyperlegible, sans-serif';g.fillStyle=mut;g.fillText('Years of experience →',44,H-6);[0,5,10,15,20,25].forEach(v=>g.fillText(v,X(v)-4,H-12));
+   [['M',cssv('--s1'),'Male'],['F',cssv('--s2'),'Female']].forEach(([k,c,n])=>{const [a,b]=L[m][k];g.strokeStyle=c;g.lineWidth=3;g.beginPath();g.moveTo(X(0),Y(a));g.lineTo(X(25),Y(a+b*25));g.stroke();g.fillStyle=c;g.font='700 13px Atkinson Hyperlegible, sans-serif';g.fillText(`${n}: ${Math.round(a).toLocaleString('en-IN')} + ${Math.round(b).toLocaleString('en-IN')}·Exp`,X(14),Y(a+b*14)-8)});
+   el.querySelector('#inT').innerHTML=m?'With the interaction, each gender gets its own slope. Women start higher (+34,700) but gain only 3,059 a year against 18,240 for men, so the lines cross at about 2.3 years.':'Without the interaction the lines must be parallel: the gender gap is a fixed −96,987 at every level of experience.';
+   el.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('cur',+b.dataset.m===m))};
+  el.addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(b){m=+b.dataset.m;draw()}});draw();
+ },
+ fivept(el){
+  el.innerHTML=`<div class="vizrow"><label for="fpM">Predicted rating m: <b id="fpMv"></b></label><input type="range" id="fpM" min="12" max="21" step="0.1" value="14.9"><span class="toolnote">s = 1.905</span></div><div class="tblwrap"><table class="plain" id="fpT"></table></div><p id="fpS" style="margin-top:10px"></p>`;
+  const sl=el.querySelector('#fpM'),s=1.905;const draw=()=>{const m=+sl.value;el.querySelector('#fpMv').textContent=m.toFixed(1);
+   const pts=[-1.3,-0.5,0,0.5,1.3].map(z=>{const r=m+z*s,fee=r>=19?7.5e6:7.5e6-(19-r)*1e6;return[z,r,fee]});const ev=pts.reduce((a,p)=>a+p[2]/5,0),vpi=pts.reduce((a,p)=>a+Math.max(p[2],5e6)/5,0)-Math.max(ev,5e6);
+   el.querySelector('#fpT').innerHTML=`<tr><th>Point</th><th>Rating</th><th>Harsanyi pays</th></tr>`+pts.map(([z,r,f])=>`<tr><td class="m">m ${z<0?'−':'+'} ${Math.abs(z)}s</td><td class="m">${r.toFixed(3)}</td><td class="m">$${Math.round(f).toLocaleString('en-US')}</td></tr>`).join('');
+   el.querySelector('#fpS').innerHTML=`Expected Harsanyi payment <b>$${Math.round(ev).toLocaleString('en-US')}</b> vs the sure <b>$5,000,000</b>, so <b>${ev>5e6?'take Harsanyi':'take the fixed fee'}</b>. Value of perfect information: $${Math.round(vpi).toLocaleString('en-US')}.`};
+  sl.addEventListener('input',draw);draw();
+ }
+};
+
+/* ================= Lessons C–G ================= */
+const pA=(40-P67.yh)/P67.seM,pB=(40-P67.yh)/P67.seP;
+const bA=(106000-PB.yh)/PB.seM,bB=(106000-PB.yh)/PB.seP;
+function cor(rY1,rY2,r12){const num=rY2-rY1*r12;return{partial:num/Math.sqrt((1-rY1*rY1)*(1-r12*r12)),part:num/Math.sqrt(1-r12*r12)}}
+const HP=cor(0.77639645,0.670189446,0.722648803);
+const gEdu=((0.734922-0.644303)/4)/((1-0.734922)/192);
+const fee=r=>r>=19?7.5e6:7.5e6-(19-r)*1e6;
+function five(m,s){const p=[-1.3,-0.5,0,0.5,1.3].map(z=>m+z*s),f=p.map(fee),ev=f.reduce((a,b)=>a+b,0)/5,vpi=f.reduce((a,b)=>a+Math.max(b,5e6),0)/5-Math.max(ev,5e6);return{p,f,ev,vpi}}
+const CB=five(14.8814,1.905),G16=five(17.6,1.905);
+
+LESSONS.push(
+/* ---------- C1 ---------- */
+{id:'C1',part:'C',title:'Confidence vs prediction intervals',viz:'bands',
+ rule:'Average at X₀: Ŷ ± t·Sₑ√(1/n + (X₀−X̄)²/SSX). One case: Ŷ ± t·Sₑ√(1 + 1/n + (X₀−X̄)²/SSX). SSX = (n − 1)·S_X².',
+ idea:`<p>A regression gives one number, Ŷ, for each X. Exams ask how far to trust it, and the answer depends on <b>what</b> you’re predicting.</p>
+ <ul><li><b>Confidence interval (CI):</b> the <i>average</i> Y of all cases with X = X₀, such as "the average price of all cars with 67,000 km". Only the line itself is uncertain.</li>
+ <li><b>Prediction interval (PI):</b> <i>one</i> case, such as "this particular car". The line is uncertain, and the car also has its own noise around the line. That noise is the extra <b>1</b> under the square root.</li></ul>
+ <p class="formula">SE(mean) = Sₑ·√(1/n + (X₀ − X̄)²/SSX)<br>SE(pred) = Sₑ·√(1 + 1/n + (X₀ − X̄)²/SSX)<br>interval = Ŷ ± T.INV.2T(α, n − k − 1) × SE</p>
+ <p>Both are narrowest at X₀ = X̄ and widen as you move away from it. With more data the CI keeps shrinking, but the PI never gets narrower than about ±t·Sₑ.</p>
+ <p>Papers rarely print SSX. Rebuild it from the descriptive statistics: <b>SSX = (n − 1)·S_X²</b>.</p>`,
+ where:{model:'cars',desc:true,cells:{se:'s1',n:'s2',b0:'s3',b1:'s3'},formula:`SE = <span class="c1">Sₑ</span>·√(<i>[1 +]</i> 1/<span class="c2">n</span> + (X₀ − X̄)²/SSX) &nbsp; Ŷ = <span class="c3">b₀ + b₁X₀</span>`,
+  note:`<p>Everything you need is already in the output: Sₑ, n and the coefficients. Add X̄ and S_X from the descriptive statistics. Drag the slider below to watch both intervals pinch at the mean and flare towards the edges.</p>`},
+ worked:{model:'cars',desc:true,prompt:`<p><b>Used cars.</b> Give the 95% CI for the <i>average</i> price, and the 95% PI for <i>one</i> car, at 67,000 km.</p>`,cells:{se:'s1',b0:'s3',b1:'s3'},
+  steps:[
+   {h:'Point prediction',b:'',calc:`Ŷ = 56.20466 − 0.26682 × 67 = ${P67.yh.toFixed(4)}`,xl:['=56.20466-0.26682*67']},
+   {h:'Rebuild SSX',b:'From the descriptive statistics, S_X = 15.3075.',calc:`SSX = (10 − 1) × 15.3075² = ${P67.ssx.toFixed(1)}`,xl:['=9*15.3075^2']},
+   {h:'SE of the mean',b:'X₀ = 67 is close to X̄ = 73.1, so the distance term is small.',calc:`SE(mean) = 2.178288 × √(1/10 + (67 − 73.1)²/${P67.ssx.toFixed(1)}) = ${P67.seM.toFixed(4)}`,xl:['=2.178288*SQRT(1/10+(67-73.1)^2/(9*15.3075^2))']},
+   {h:'Confidence interval',b:`t = T.INV.2T(0.05, 8) = ${t8.toFixed(3)}`,calc:`${P67.yh.toFixed(3)} ± ${t8.toFixed(3)} × ${P67.seM.toFixed(4)} = (${(P67.yh-t8*P67.seM).toFixed(3)}, ${(P67.yh+t8*P67.seM).toFixed(3)})`,write:'With 95% confidence, the average price of cars with 67,000 km is between ₹3.66 lakh and ₹4.01 lakh.'},
+   {h:'SE for one car, and the PI',b:'Add 1 inside the root for the car’s own noise.',calc:`SE(pred) = 2.178288 × √(1 + 1/10 + 37.21/${P67.ssx.toFixed(1)}) = ${P67.seP.toFixed(4)}   →   PI = (${(P67.yh-t8*P67.seP).toFixed(3)}, ${(P67.yh+t8*P67.seP).toFixed(3)})`,xl:['=2.178288*SQRT(1+1/10+(67-73.1)^2/(9*15.3075^2))'],write:'A particular car with 67,000 km should sell for between ₹3.30 lakh and ₹4.36 lakh (95%).'}
+  ]},
+ guided:{model:'bs',desc:true,intro:`<p><b>Bendrix</b> (overhead on machine hours, n = 36). Next month the plant plans <b>1,600 machine hours</b>. Use the descriptive statistics below the output.</p>`,cells:{se:'s1'},
+  items:[
+   {id:'a',type:'num',prompt:'Predicted overhead Ŷ at 1,600 hours',ans:PB.yh,hints:['48621.35 + 34.70224 × 1600']},
+   {id:'b',type:'num',prompt:'SE of the mean prediction',ans:PB.seM,mistakes:[{v:PB.seP,msg:'That includes the extra 1, so it’s the SE for one month. The mean uses only 1/n + distance.'}],hints:['SSX = 35 × 198.7815²','8584.739 × √(1/36 + (1600 − 1456.111)² / SSX)']},
+   {id:'c',type:'num',tol:0.0005,prompt:'Upper limit of the 95% CI for the average overhead (keep 2 decimals)',ans:PB.yh+t34*PB.seM,mistakes:[{v:PB.yh+1.96*PB.seM,msg:'Use T.INV.2T(0.05, 34), not 1.96.'}],hints:['Ŷ + T.INV.2T(0.05, 34) × SE(mean)']},
+   {id:'d',type:'num',prompt:'Lower limit of the 95% PI for a single month',ans:PB.yh-t34*PB.seP,mistakes:[{v:PB.yh-t34*PB.seM,msg:'That’s the CI. A single month needs SE(pred), with the 1 inside the root.'}],hints:['SE(pred) = 8584.739 × √(1 + 1/36 + (X₀ − X̄)²/SSX)']},
+   {id:'e',type:'mcq',prompt:'The finance team asks: "How high could <b>next month’s</b> overhead go?" Which interval do you use?',options:[{t:'Prediction interval: next month is one specific outcome.',ok:true},{t:'Confidence interval: it’s an average over many months.',msg:'Next month is a single month, not the average of all 1,600-hour months.'},{t:'The slope’s confidence interval.',msg:'That’s about β₁, not about overhead.'}]}
+  ]}},
+/* ---------- C2 ---------- */
+{id:'C2',part:'C',title:'Probabilities, bounds and working backwards',
+ rule:'P(Y > c) = T.DIST.RT((c − Ŷ)/SE, df). Max/min at 95% = Ŷ ± T.INV(0.95, df)·SE. X for a target = (Y − b₀)/b₁. Average → SE(mean), one case → SE(pred).',
+ idea:`<p>Once you have Ŷ and the right SE, three more exam questions become one line each.</p>
+ <ul><li><b>Probability:</b> "What’s the chance it exceeds c?" Standardise, then use the t right tail: <code>T.DIST.RT((c − Ŷ)/SE, n − k − 1)</code>. For "below c", use 1 minus that.</li>
+ <li><b>One-sided bound:</b> "the <i>maximum</i> (or minimum) at 95%" puts all 5% in one tail: Ŷ ± <code>T.INV(0.95, df)</code> × SE. State in your answer that it’s one-sided. Some answer keys use the two-sided limit instead, and it costs nothing to name which one you used.</li>
+ <li><b>Working backwards:</b> "Which X gives an average Y of c?" Solve the line: X = (c − b₀)/b₁.</li></ul>
+ <p><b>The trap is picking the SE.</b> Ask what one observation is. If each row is a car, "the average price of cars at 67k" uses SE(mean). If each row is a whole <i>group</i> (an immigrant population, a country, a store), then "a group’s average wage" is one observation, so it uses SE(pred).</p>`,
+ where:{model:'cars',desc:true,cells:{se:'s1',df_res:'s2'},formula:`z-like score = (c − Ŷ) / SE &nbsp; → &nbsp; T.DIST.RT(score, <span class="c2">df_res</span>)`,note:`<p>It’s the same SE(mean) and SE(pred) as lesson C1, used to turn a threshold into a probability.</p>`},
+ worked:{model:'cars',desc:true,prompt:`<p><b>Used cars at 67,000 km</b> (Ŷ = ${P67.yh.toFixed(4)}, SE(mean) = ${P67.seM.toFixed(4)}, SE(pred) = ${P67.seP.toFixed(4)}, df = 8).</p>`,
+  steps:[
+   {h:'P(average price > ₹4 lakh)',b:'An average over all such cars, so use SE(mean).',calc:`t = (40 − ${P67.yh.toFixed(4)}) / ${P67.seM.toFixed(4)} = ${pA.toFixed(3)}   →   P = ${rtail(pA,8).toFixed(4)}`,xl:[`=T.DIST.RT((40-${P67.yh.toFixed(4)})/${P67.seM.toFixed(4)}, 8)`]},
+   {h:'P(one particular car > ₹4 lakh)',b:'One car carries its own noise, so use SE(pred). The probability rises a lot.',calc:`t = (40 − ${P67.yh.toFixed(4)}) / ${P67.seP.toFixed(4)} = ${pB.toFixed(3)}   →   P = ${rtail(pB,8).toFixed(4)}`,xl:[`=T.DIST.RT((40-${P67.yh.toFixed(4)})/${P67.seP.toFixed(4)}, 8)`],write:'There is about a 24% chance that a particular car with 67,000 km sells for more than ₹4 lakh.'},
+   {h:'Minimum price for one car at 95%',b:'One-sided, so all 5% goes in the lower tail.',calc:`${P67.yh.toFixed(4)} − T.INV(0.95, 8) × ${P67.seP.toFixed(4)} = ${(P67.yh-t8o*P67.seP).toFixed(3)}`,xl:[`=${P67.yh.toFixed(4)}-T.INV(0.95,8)*${P67.seP.toFixed(4)}`]},
+   {h:'Working backwards',b:'Which mileage gives an average price of ₹3.5 lakh (35 units)?',calc:`X = (35 − 56.20466) / (−0.26682) = ${((35-56.20466)/-0.26682).toFixed(2)} thousand km`,xl:['=(35-56.20466)/-0.26682']}
+  ]},
+ guided:{model:'bs',desc:true,intro:`<p><b>Bendrix at 1,600 machine hours.</b> From C1: Ŷ = ${PB.yh.toFixed(2)}, SE(mean) = ${PB.seM.toFixed(3)}, SE(pred) = ${PB.seP.toFixed(3)}, df = 34.</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'P(<b>average</b> overhead across all 1,600-hour months exceeds ₹1,06,000)',ans:rtail(bA,34),pct:true,mistakes:[{v:rtail(bB,34),msg:'That used SE(pred). An average across all such months uses SE(mean).'}],hints:['t = (106000 − Ŷ) / SE(mean)','T.DIST.RT(t, 34)']},
+   {id:'b',type:'num',prompt:'P(<b>next month’s</b> overhead exceeds ₹1,06,000)',ans:rtail(bB,34),pct:true,mistakes:[{v:rtail(bA,34),msg:'Next month is one outcome. Use SE(pred).'}],hints:['Same as a, with SE(pred).']},
+   {id:'c',type:'num',prompt:'The <b>maximum average</b> overhead at 1,600 hours, 95% one-sided',ans:PB.yh+t34o*PB.seM,alts:[PB.yh+t34*PB.seM],mistakes:[{v:PB.yh+t34o*PB.seP,msg:'An average uses SE(mean).'}],hints:['Ŷ + T.INV(0.95, 34) × SE(mean)']},
+   {id:'d',type:'num',prompt:'How many machine hours give an <b>average</b> overhead of ₹1,00,000?',ans:(100000-48621.35)/34.70224,hints:['X = (100000 − b₀) / b₁']},
+   {id:'e',type:'mcq',prompt:'Immigrant wages: each row is one immigrant <i>population</i>. "What’s the chance that a population with 50% English speakers earns more than $12 a week on average?" Which SE?',options:[{t:'SE(pred): one population is one observation, even though its wage is an average.',ok:true},{t:'SE(mean): the question says "on average".',msg:'"On average" describes how each population’s wage is measured. The question is still about one population, which is one row.'}]}
+  ]}},
+/* ---------- D1 ---------- */
+{id:'D1',part:'D',title:'Reading residual plots',viz:'resid',
+ rule:'Curve → linearity fails (transform). Funnel → non-constant variance (SEs unreliable). Waves in time → autocorrelation. Bent Q-Q → non-normal errors.',
+ idea:`<p>Every t-test, F-test and interval you’ve computed assumes four things about the residuals. The residual plot is how you check them, and papers often ask you to <i>"comment on the plots"</i>.</p>
+ <ul><li><b>Linearity</b> (the mean pattern): residuals scatter around 0 with no curve. A U or an arch means the straight line is the wrong form. Fix it by transforming X, Y or both.</li>
+ <li><b>Constant variance</b>, or homoscedasticity (the spread): the vertical spread stays the same across X. A <b>funnel</b> is heteroscedasticity. The coefficients are still fine, but the SEs, t, p and intervals become unreliable.</li>
+ <li><b>Independence</b> (order): in time-ordered data, today’s error shouldn’t predict tomorrow’s. Waves or runs mean autocorrelation (lesson D3 covers Durbin–Watson).</li>
+ <li><b>Normality</b> (shape): the Q-Q plot hugs the line. Small wobbles are fine. Strong skew, heavy tails or outliers are not.</li></ul>
+ <p>A high R² and tiny p-values don’t prove the model is right. Pet food had R² = 0.83 and still had the wrong shape.</p>`,
+ where:{note:`<p>Below are the five pictures you’ll see in papers, each with its diagnosis.</p>`},
+ worked:{prompt:`<p><b>Pet food</b> (104 weeks, sales vs price). The straight-line fit gives R² = 0.828 and p ≈ 0.</p>`,
+  steps:[
+   {h:'Look at the residuals, not the R²',b:'The residuals against price form a clear curve: positive at both ends, negative in the middle.',fig:'curve'},
+   {h:'Diagnose',b:'The mean of the residuals changes with X, so the linearity assumption fails. The straight line is the wrong functional form.'},
+   {h:'Fix',b:'Take logs of both variables: ln(Sales) on ln(Price). R² rises to 0.955 and the residuals become a patternless band.',calc:'ln(Sales) = 11.05 − 2.442 × ln(Price)',write:'The residual plot shows a curved pattern, so the linear form is misspecified. A log-log model removes the pattern.'}
+  ]},
+ guided:{intro:`<p>Diagnose each residual plot.</p>`,
+  items:[
+   {id:'a',type:'mcq',fig:'funnel',prompt:'Residuals vs X',options:[{t:'Heteroscedasticity: spread grows with X',ok:true},{t:'Non-linearity',msg:'The centre stays at 0. It’s the spread that changes.'},{t:'No problem',msg:'Look at how the vertical spread widens to the right.'}]},
+   {id:'b',type:'mcq',fig:'wave',prompt:'Residuals in time order (weekly sales)',options:[{t:'Autocorrelation: errors follow each other in runs',ok:true},{t:'Heteroscedasticity',msg:'The spread is steady. The pattern is that neighbouring points move together.'},{t:'Normality fails',msg:'This is a time-order plot, so check independence first.'}]},
+   {id:'c',type:'mcq',fig:'random',prompt:'Residuals vs fitted values',options:[{t:'No visible violation',ok:true},{t:'Non-linearity',msg:'There’s no curve, just even noise around 0.'},{t:'Heteroscedasticity',msg:'The spread looks constant.'}]},
+   {id:'d',type:'mcq',fig:'qq',prompt:'Normal Q-Q plot of residuals',options:[{t:'Residuals are skewed: normality is doubtful',ok:true},{t:'Residuals are normal',msg:'The points bend away from the line at the upper end.'},{t:'Autocorrelation',msg:'A Q-Q plot shows shape, not order.'}]},
+   {id:'e',type:'mcq',prompt:'With heteroscedasticity, what goes wrong?',options:[{t:'Standard errors, so t-tests, p-values and intervals become unreliable',ok:true},{t:'The coefficients become biased',msg:'OLS coefficients stay unbiased. It’s the inference that breaks.'},{t:'R² can no longer be computed',msg:'R² still computes. The problem is the standard errors.'}]}
+  ]}},
+/* ---------- D2 ---------- */
+{id:'D2',part:'D',title:'Log models and how to read them',
+ rule:'log-log: 1% ΔX → β₁% ΔY (elasticity). log-lin (ln Y on X): +1 unit X → ≈100·β₁% ΔY. lin-log (Y on ln X): +1% X → 0.01·β₁ units ΔY.',
+ idea:`<p>When the residuals curve, transform the variables until the relationship looks straight. It’s still <i>linear</i> regression, because the model is linear in the β's.</p>
+ <div class="tblwrap"><table class="plain"><tr><th>Model</th><th>Equation</th><th>Read β₁ as</th></tr>
+ <tr><td>log-log</td><td class="m">ln Y = β₀ + β₁ ln X</td><td>1% more X → β₁ % change in Y (an <b>elasticity</b>)</td></tr>
+ <tr><td>log-lin</td><td class="m">ln Y = β₀ + β₁ X</td><td>1 more unit of X → about 100·β₁ % change in Y</td></tr>
+ <tr><td>lin-log</td><td class="m">Y = β₀ + β₁ ln X</td><td>1% more X → 0.01·β₁ units change in Y</td></tr></table></div>
+ <p style="margin-top:12px">To predict, plug in the log: for lin-log, Ŷ = β₀ + β₁·LN(X). Doubling X adds β₁·LN(2) to Y.</p>
+ <p><b>Choosing the transformation (Tukey–Mosteller bulge rule):</b> look at which way the curve bulges, then move X and/or Y "up the ladder" (squares) or "down the ladder" (square roots, logs) towards the bulge.</p>`,
+ where:{exhibits:[{title:'Pet food, log-log',cols:['','Coefficients','Standard Error','t Stat'],rows:[['Intercept','11.05056','0.00748','1477.35'],['Ln(Price)','−2.44205','0.052759','−46.2865']]},{title:'Word recall, lin-log (13 people)',cols:['','Coefficients'],rows:[['Intercept','0.8464'],['ln(Time in seconds)','−0.07923']]}],note:`<p>The two transformed models from Sessions 3 and 8.</p>`},
+ worked:{prompt:`<p>Read both models.</p>`,
+  steps:[
+   {h:'Pet food is log-log, so it’s an elasticity',b:'',calc:'β₁ = −2.442: a 1% price rise → about a 2.44% fall in sales',write:'A 1% increase in price is associated with a 2.44% decrease in sales volume.'},
+   {h:'Word recall is lin-log',b:'A 1% longer wait changes the recall proportion by 0.01 × (−0.07923).',calc:'1% more time → −0.000792 recall proportion'},
+   {h:'Predict with lin-log',b:'Recall after 60 seconds:',calc:`0.8464 − 0.07923 × LN(60) = ${(0.8464-0.07923*Math.log(60)).toFixed(4)}`,xl:['=0.8464-0.07923*LN(60)']},
+   {h:'Doubling the time',b:'Going from 60 to 120 seconds changes ln(Time) by ln 2, whatever the starting point.',calc:`−0.07923 × LN(2) = ${(-0.07923*Math.log(2)).toFixed(4)}`,xl:['=-0.07923*LN(2)']}
+  ]},
+ guided:{intro:`<p>Use the two models shown in "Where it lives".</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'Predicted recall proportion after 100 seconds',ans:0.8464-0.07923*Math.log(100),mistakes:[{v:0.8464-0.07923*Math.log10(100),msg:'Use the natural log, LN(), not base-10 LOG().'},{v:0.8464-0.07923*100,msg:'Plug in ln(100), not 100.'}],hints:['0.8464 − 0.07923 × LN(100)']},
+   {id:'b',type:'num',prompt:'Change in recall when the wait goes from 300 to 600 seconds',ans:-0.07923*Math.log(2),mistakes:[{v:-0.07923*300,msg:'In a lin-log model what matters is the change in ln(Time): ln(600) − ln(300) = ln 2.'}],hints:['−0.07923 × (LN(600) − LN(300))']},
+   {id:'c',type:'num',prompt:'Pet food: by the elasticity, approximately what % change in sales follows a 10% price rise? (Enter as a percent, e.g. −5)',ans:-24.4205,mistakes:[{v:24.4205,msg:'The elasticity is negative, so a price rise lowers sales.'},{v:-2.44205,msg:'That’s for a 1% rise. Scale it to 10%.'}],hints:['%ΔY ≈ β₁ × %ΔX = −2.44205 × 10']},
+   {id:'d',type:'mcq',prompt:'A model gives ln(Salary) = 10.2 + 0.05 × YearsExp. How do you read 0.05?',options:[{t:'Each extra year is associated with about 5% higher salary',ok:true},{t:'Each extra year adds ₹0.05',msg:'Y is in logs, so the change is in percent, not rupees.'},{t:'A 1% rise in experience gives 0.05% more salary',msg:'That would be log-log. Here X is not logged.'}]}
+  ]}},
+/* ---------- D3 ---------- */
+{id:'D3',part:'D',title:'Outliers, autocorrelation and the zero intercept',
+ rule:'Leverage Hᵢᵢ > 2(k+1)/n (3(k+1)/n: high). Cook’s D > 1 (or > 4/(n−k−1)). Mahalanobis > 10. DW d ≈ 2(1 − ρ): near 2 OK, low = +autocorrelation. No intercept → residuals don’t sum to 0, R² not comparable.',
+ idea:`<p><b>Three kinds of unusual point:</b></p>
+ <ul><li><b>Outlier:</b> a large residual. Y is unusual given X.</li><li><b>Leverage point:</b> an extreme X value. Measured by Hᵢᵢ, the diagonal of the hat matrix H = X(XᵀX)⁻¹Xᵀ.</li><li><b>Influential point:</b> an outlier with leverage. Removing it noticeably changes the coefficients.</li></ul>
+ <div class="tblwrap"><table class="plain"><tr><th>Measure</th><th>Flag when</th></tr><tr><td>Leverage Hᵢᵢ</td><td class="m">&gt; 2(k+1)/n (highly: &gt; 3(k+1)/n)</td></tr><tr><td>Cook’s distance</td><td class="m">&gt; 1, or &gt; 4/(n − k − 1)</td></tr><tr><td>Mahalanobis distance</td><td class="m">&gt; 10 (rule of thumb) or &gt; χ²crit(k)</td></tr><tr><td>|SDFFIT|</td><td class="m">&gt; 2√((k+1)/n)</td></tr><tr><td>|SDFBETA|</td><td class="m">&gt; 2/√n</td></tr></table></div>
+ <p style="margin-top:12px"><b>Autocorrelation (Durbin–Watson):</b> d = Σ(eᵢ − eᵢ₋₁)² / Σeᵢ² lies between 0 and 4, and d ≈ 2(1 − ρ). Near 2 means no autocorrelation. Below d_L means positive autocorrelation. Above 4 − d_L means negative. Between d_L and d_U the test is inconclusive. SPSS prints DW in the Model Summary.</p>
+ <p><b>Forcing the intercept to 0:</b> the residuals no longer sum to zero, and Excel computes R² against ΣY² instead of Σ(Y − Ȳ)². That inflates R² (house prices went from 0.60 to 0.94), so don’t compare it with a normal R².</p>`,
+ where:{exhibits:[{title:'House prices: with and without an intercept (n = 1,047)',cols:['Model','R Square','Living Area slope'],rows:[['With intercept','0.6028','81.88'],['Intercept forced to 0','0.9413 (not comparable)','89.68']]}]},
+ worked:{prompt:`<p><b>Gender discrimination model</b> with Gender, YearsExp and Gender×YearsExp: n = 200, k = 3.</p>`,
+  steps:[
+   {h:'Leverage cut-offs',b:'',calc:`2(k+1)/n = 2 × 4 / 200 = 0.04     3(k+1)/n = 0.06`,xl:['=2*(3+1)/200']},
+   {h:'Cook’s distance cut-off',b:'',calc:`4/(n − k − 1) = 4 / 196 = ${(4/196).toFixed(4)}   (or the stricter D > 1)`},
+   {h:'A Durbin–Watson reading',b:'Suppose time-ordered sales give d = 0.62.',calc:'ρ ≈ 1 − d/2 = 0.69  → strong positive autocorrelation',write:'d is far below 2, so successive errors are positively correlated and the OLS standard errors are unreliable.'}
+  ]},
+ guided:{intro:`<p><b>Bendrix multiple regression:</b> n = 36, k = 2.</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'Leverage cut-off 2(k+1)/n',ans:2*3/36,mistakes:[{v:2*2/36,msg:'Use k + 1 = 3, which counts the intercept.'}]},
+   {id:'b',type:'num',prompt:'Cook’s distance cut-off 4/(n − k − 1)',ans:4/33},
+   {id:'c',type:'num',prompt:'Residuals have first-order correlation ρ = 0.6. Approximate Durbin–Watson d',ans:0.8,abs:0.005,mistakes:[{v:1.2,abs:0.005,msg:'d ≈ 2(1 − ρ) = 2 × 0.4.'}]},
+   {id:'d',type:'mcq',prompt:'An observation has a huge residual but an ordinary X value. It is…',options:[{t:'An outlier, but not a leverage point',ok:true},{t:'A leverage point',msg:'Leverage is about extreme X values.'},{t:'Certainly influential',msg:'Influence needs leverage too. Check Cook’s D.'}]},
+   {id:'e',type:'mcq',prompt:'Dropping the intercept raised R² from 0.60 to 0.94. Better model?',options:[{t:'No. Without an intercept R² is computed differently and can’t be compared',ok:true},{t:'Yes, higher R² means better fit',msg:'Excel switches SST to ΣY² when the intercept is forced to 0, which inflates R².'}]}
+  ]}},
+/* ---------- E1 ---------- */
+{id:'E1',part:'E',title:'Holding others fixed, and omitted variable bias',viz:'ovb',
+ rule:'MLR slope = effect holding the other X’s fixed. Short slope α₁ = β₁ + β₂·δ₁ with δ₁ = Cov(X₁,X₂)/Var(X₁). Bias needs X₂ to matter AND to correlate with X₁. Sign = sign(β₂)·sign(δ₁).',
+ idea:`<p>In multiple regression, <b>bⱼ is the change in expected Y for one more unit of Xⱼ, holding the other predictors fixed.</b> Coefficients are <i>conditional</i>, so they change when you add or drop variables.</p>
+ <p>Leave out a relevant variable X₂ and the X₁ coefficient soaks up part of X₂'s effect. That’s <b>omitted variable bias</b>:</p>
+ <p class="formula">α₁ (short model) = β₁ (full model) + β₂ × δ₁<br>δ₁ = Cov(X₁, X₂)/Var(X₁), the slope of X₂ regressed on X₁</p>
+ <p>Bias needs <b>both</b> conditions: X₂ affects Y (β₂ ≠ 0) <b>and</b> X₂ is correlated with X₁ (δ₁ ≠ 0). If either is zero, there’s no bias.</p>
+ <p>The direction comes from the signs: <b>sign(bias) = sign(β₂) × sign(δ₁)</b>. Exams often give only the signs of correlations and ask which way a coefficient moves.</p>
+ <p>"Controlling for X₂" literally means removing X₂'s linear effect from both Y and X₁, then fitting what’s left. That’s the Frisch–Waugh–Lovell result from Session 4.</p>`,
+ where:{model:'bm',cells:{b1:'hl',b2:'s1'},formula:`34.70 (simple) = <span class="chl">43.54</span> + <span class="c1">883.62</span> × (−0.01)`,note:`<p>The full model’s MachHrs coefficient (yellow) and ProdRuns coefficient (blue). The simple regression of overhead on MachHrs alone gave 34.70. Flip the signs below to see how the bias direction follows.</p>`},
+ worked:{model:'bm',prompt:`<p><b>Bendrix.</b> Explain why the MachHrs slope is 34.70 alone but 43.54 with ProdRuns included.</p>`,
+  steps:[
+   {h:'The three regressions',b:'Full: β₁ = 43.5364, β₂ = 883.6179. Short: α₁ = 34.70224. ProdRuns on MachHrs: δ₁ = Cov/Var = −384.077 / 38,416.49.',calc:`δ₁ = ${(-384.077/38416.49).toFixed(6)}`,xl:['=-384.077/38416.49']},
+   {h:'Bias',b:'',calc:`β₂ × δ₁ = 883.6179 × (${(-384.077/38416.49).toFixed(6)}) = ${(883.6179*-384.077/38416.49).toFixed(3)}`,xl:['=883.6179*(-384.077/38416.49)']},
+   {h:'Check',b:'',calc:`43.5364 + (${(883.6179*-384.077/38416.49).toFixed(3)}) = ${(43.5364+883.6179*-384.077/38416.49).toFixed(3)} ≈ 34.702 ✓`},
+   {h:'Interpret',b:'ProdRuns raises overhead and runs opposite to MachHrs, so leaving it out <b>understates</b> the MachHrs effect.',write:'Omitting ProdRuns biases the MachHrs coefficient downward by β₂δ₁ ≈ −8.83, because ProdRuns affects overhead and is negatively correlated with MachHrs.'}
+  ]},
+ guided:{model:'bm',intro:`<p>Same Bendrix data, other direction. Regressing MachHrs on ProdRuns gives a slope of <b>−5.24957</b>.</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'Predict the slope of the <b>simple</b> regression of Overhead on ProdRuns',ans:883.6179+43.5364*-5.24957,mistakes:[{v:883.6179-43.5364*-5.24957,msg:'Add β₂ × δ₁ = 43.5364 × (−5.24957), which is negative.'}],hints:['α = β_ProdRuns + β_MachHrs × δ','883.6179 + 43.5364 × (−5.24957)']},
+   {id:'b',type:'mcq',prompt:'Box office: collections regressed on YouTube likes and Budget. Budget raises collections and is <b>positively</b> correlated with likes (r = 0.609). Drop Budget. What happens to the likes coefficient?',options:[{t:'It rises: positive bias',ok:true},{t:'It falls: negative bias',msg:'β₂ > 0 and δ₁ > 0, so the bias is positive.'},{t:'No change',msg:'Budget matters and correlates with likes, so both conditions for bias hold.'}]},
+   {id:'c',type:'mcq',prompt:'You omit a variable that strongly affects Y but is <b>uncorrelated</b> with X₁. The X₁ coefficient is…',options:[{t:'Unbiased, though Sₑ is larger and R² lower',ok:true},{t:'Biased upward',msg:'With δ₁ = 0 the bias β₂δ₁ is 0.'},{t:'Biased downward',msg:'With δ₁ = 0 the bias β₂δ₁ is 0.'}]},
+   {id:'d',type:'mcq',prompt:'"MLR coefficient of MachHrs = 43.54" means…',options:[{t:'One more machine hour adds ₹43.54 to expected overhead, holding ProdRuns fixed',ok:true},{t:'One more machine hour adds ₹43.54 regardless of what else changes',msg:'MLR coefficients are conditional: other predictors are held fixed.'},{t:'MachHrs causes 43.54% of overhead',msg:'It’s a per-unit change, not a share.'}]}
+  ]}},
+/* ---------- E2 ---------- */
+{id:'E2',part:'E',title:'Multicollinearity and VIF',
+ rule:'VIFⱼ = 1/(1 − Rⱼ²) = 1/Tolerance. With two predictors, Rⱼ² = r². SE inflates by √VIF. VIF > 4: look into it. VIF > 10: serious.',
+ idea:`<p><b>Multicollinearity</b> is when a predictor is strongly explained by the other predictors. The model can’t tell their effects apart, so:</p>
+ <ul><li>coefficients become unstable and may flip sign</li><li>their SEs blow up, so t falls and p rises and relevant variables look insignificant</li><li>R² barely changes, and predictions inside the data range are still fine</li></ul>
+ <p class="formula">Rⱼ² = R² from regressing Xⱼ on the other X’s<br>Tolerance = 1 − Rⱼ² &nbsp;&nbsp; VIFⱼ = 1/Tolerance<br>SE(actual) = SE(no collinearity) × √VIF</p>
+ <p>With just two predictors, Rⱼ² is simply their squared correlation. Thresholds: VIF &gt; 4 calls for investigation, and VIF &gt; 10 is severe (the formula sheet uses &gt; 10).</p>
+ <p>Remedies: drop one of the overlapping variables, combine them, or collect data with more independent variation. Note that adding a correlated predictor <b>never lowers R²</b>.</p>`,
+ where:{exhibits:[{title:'Height on both feet (n = 105)',cols:['','Coefficient','Std. Error','p'],rows:[['Right foot','6.8229','3.4285','0.049'],['Left foot','−3.6448','3.4411','0.292']]},{title:'Height on Right foot only',cols:['','Coefficient','Std. Error',''],rows:[['Right foot','3.1949','0.1497','']]}],note:`<p>Right and left foot correlate at 0.999. The fit hardly changes (R² 0.816 → 0.818), but the SE jumps more than twentyfold.</p>`},
+ worked:{prompt:`<p><b>Height vs feet.</b> Regressing Right on Left gives R² = 0.998096. Quantify the multicollinearity.</p>`,
+  steps:[
+   {h:'Tolerance',b:'',calc:'1 − 0.998096 = 0.001904'},
+   {h:'VIF',b:'',calc:`1 / 0.001904 = ${(1/0.001904).toFixed(1)}`,xl:['=1/(1-0.998096)']},
+   {h:'SE inflation',b:'The SE should grow by √VIF. Check against the outputs.',calc:`√525.2 = ${Math.sqrt(1/0.001904).toFixed(2)}   vs   3.4285 / 0.1497 = ${(3.4285/0.1497).toFixed(2)} ✓`,xl:['=SQRT(1/(1-0.998096))'],write:'VIF ≈ 525, far above 10, so the multicollinearity is severe. The standard error of Right foot is inflated about 23-fold, which is why Left foot looks insignificant and has the wrong sign.'}
+  ]},
+ guided:{intro:`<p>Compute and interpret VIFs.</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'A model has only two predictors, Test2 and Test3, correlated at r = 0.80. VIF?',ans:1/(1-0.64),mistakes:[{v:1/(1-0.8),msg:'Square the correlation first: Rⱼ² = r².'}],hints:['VIF = 1/(1 − r²)']},
+   {id:'b',type:'num',prompt:'SPSS shows Tolerance = 0.198 for fixed acidity. VIF?',ans:1/0.198,hints:['VIF = 1/Tolerance']},
+   {id:'c',type:'num',prompt:'A predictor has VIF = 4. By what factor is its SE inflated?',ans:2,abs:0.01,mistakes:[{v:4,abs:0.01,msg:'The SE inflates by √VIF, not VIF.'}]},
+   {id:'d',type:'mcq',prompt:'Model 1 has PercentPopE. Model 2 adds literacy rate, correlated 0.99 with PercentPopE. Compare R².',options:[{t:'R² of Model 2 ≥ R² of Model 1',ok:true},{t:'R² of Model 2 < R² of Model 1, because of multicollinearity',msg:'Adding a predictor never lowers R², even a redundant one. It inflates the SEs instead.'},{t:'Can’t tell',msg:'R² never falls when you add a variable.'}]},
+   {id:'e',type:'mcq',prompt:'With both feet in the model, Left foot has p = 0.29. Conclusion?',options:[{t:'Left foot isn’t useless: it overlaps with Right foot, and t-tests are conditional',ok:true},{t:'Left foot has no relationship with height',msg:'Alone it has R² = 0.81. It only looks insignificant because Right foot carries the same information.'}]}
+  ]}},
+/* ---------- E3 ---------- */
+{id:'E3',part:'E',title:'Partial and part correlation, and building R²',viz:'decomp',
+ rule:'part = (r_Y2 − r_Y1·r_12)/√(1 − r_12²); partial = (r_Y2 − r_Y1·r_12)/√((1 − r_Y1²)(1 − r_12²)). part² = ΔR². partial² = ΔR²/(1 − R²_old).',
+ idea:`<p>When X₂ joins a model that already has X₁, how much does it add? Two correlations answer that.</p>
+ <ul><li><b>Part (semi-partial) correlation:</b> correlate Y with the part of X₂ that X₁ can’t explain. Its square is X₂'s <b>unique share of all the variation in Y</b>: <b>part² = R²_new − R²_old</b>.</li>
+ <li><b>Partial correlation:</b> remove X₁ from <i>both</i> Y and X₂, then correlate what’s left. Its square is X₂'s share of the variation <b>X₁ left unexplained</b>: <b>partial² = ΔR² / (1 − R²_old)</b>.</li></ul>
+ <p class="formula">part = (r_Y2 − r_Y1·r_12) / √(1 − r_12²)<br>partial = (r_Y2 − r_Y1·r_12) / √((1 − r_Y1²)(1 − r_12²))<br>R²_new = R²_old + part² = R²_old + partial² × (1 − R²_old)</p>
+ <p>Partial is always at least as large as part. SPSS stepwise tables print "Zero-order / Partial / Part" columns. Zero-order is the plain correlation.</p>`,
+ where:{model:'bm',cells:{R2:'hl'},note:`<p>Bendrix: correlations Overhead–MachHrs 0.6319, Overhead–ProdRuns 0.5205, MachHrs–ProdRuns −0.2291. Toggle the entry order below: the final R² is the same either way, but the credit each variable gets changes.</p>`},
+ worked:{prompt:`<p><b>Bendrix.</b> MachHrs is in. How much does ProdRuns add? (r_Y1 = 0.631885, r_Y2 = 0.520544, r_12 = −0.22909.)</p>`,
+  steps:[
+   {h:'Common numerator',b:'',calc:`0.520544 − 0.631885 × (−0.22909) = ${(0.520544+0.631885*0.22909).toFixed(5)}`},
+   {h:'Part correlation',b:'Divide by √(1 − r_12²).',calc:`${(0.520544+0.631885*0.22909).toFixed(5)} / √(1 − 0.22909²) = ${cor(0.631885,0.520544,-0.22909).part.toFixed(4)}`,xl:['=(0.520544-0.631885*-0.22909)/SQRT(1-0.22909^2)']},
+   {h:'Partial correlation',b:'Also divide by √(1 − r_Y1²).',calc:`= ${cor(0.631885,0.520544,-0.22909).partial.toFixed(4)}`,xl:['=(0.520544-0.631885*-0.22909)/SQRT((1-0.631885^2)*(1-0.22909^2))']},
+   {h:'Build R²',b:'',calc:`0.399278 + ${cor(0.631885,0.520544,-0.22909).part.toFixed(4)}² = ${(0.399278+cor(0.631885,0.520544,-0.22909).part**2).toFixed(4)} ≈ 0.866425 ✓`,write:'ProdRuns uniquely adds 46.7% to R² after MachHrs (part² = 0.467) and explains 77.8% of the variation that MachHrs left unexplained (partial² = 0.778).'}
+  ]},
+ guided:{intro:`<p><b>House prices</b> (1,047 houses). Correlations: Price–LivingArea 0.7764, Price–Bathrooms 0.6702, LivingArea–Bathrooms 0.7226. LivingArea is in the model, and Bathrooms is next.</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'Partial correlation of Bathrooms',ans:HP.partial,mistakes:[{v:HP.part,msg:'That’s the part correlation. Partial also divides by √(1 − r_Y1²).'}],hints:['(0.6702 − 0.7764 × 0.7226) / √((1 − 0.7764²)(1 − 0.7226²))']},
+   {id:'b',type:'num',prompt:'Part correlation of Bathrooms',ans:HP.part,mistakes:[{v:HP.partial,msg:'That’s the partial correlation. Part divides only by √(1 − r_12²).'}],hints:['(0.6702 − 0.7764 × 0.7226) / √(1 − 0.7226²)']},
+   {id:'c',type:'num',prompt:'R² after adding Bathrooms',ans:0.77639645**2+HP.part**2,pct:true,mistakes:[{v:0.77639645**2+HP.partial**2,msg:'Add part², not partial². Partial² is a share of the leftover variation only.'}],hints:['R²_old = 0.7764²','R²_new = R²_old + part²']},
+   {id:'d',type:'num',prompt:'<b>Gender case, stepwise:</b> step 1 (OrgLevelF) has R² = 0.453046. OrgLevelE has partial correlation 0.518. R² after it enters?',ans:0.453046+0.518**2*(1-0.453046),pct:true,mistakes:[{v:0.453046+0.518**2,msg:'Partial² is a share of the <i>unexplained</i> part. Multiply by (1 − 0.453046).'}],hints:['R²_new = R²_old + partial² × (1 − R²_old)']}
+  ]}},
+/* ---------- E4 ---------- */
+{id:'E4',part:'E',title:'Partial F-test and adjusted R²',
+ rule:'Partial F = [(R²_full − R²_red)/r] / [(1 − R²_full)/(n − k − 1)], r = number of variables added, k = predictors in the full model. One variable: F = t². Adj R² = 1 − (1 − R²)(n − 1)/(n − k − 1).',
+ idea:`<p>A t-test asks about one coefficient. The <b>partial F-test asks whether a <i>group</i> of added variables improves the model</b>, given what’s already in it.</p>
+ <p class="formula">F = [(SSE_red − SSE_full)/r] / MSE_full = [(R²_full − R²_red)/r] / [(1 − R²_full)/(n − k − 1)]</p>
+ <ul><li>H₀: all r added coefficients = 0. H₁: at least one isn’t.</li><li>df = (r, n − k − 1), where k counts the predictors in the <b>full</b> model.</li><li>p = <code>F.DIST.RT(F, r, n − k − 1)</code>, critical value = <code>F.INV.RT(α, r, n − k − 1)</code>.</li>
+ <li>If you add just one variable, partial F = t² of that variable. In stepwise outputs, the F for the first variable equals the model’s overall F.</li></ul>
+ <p>Rejecting H₀ means the group is <i>jointly</i> significant. It doesn’t mean each variable in it is.</p>
+ <p><b>Adjusted R²</b> = 1 − (1 − R²)(n − 1)/(n − k − 1) charges for each predictor. It can fall when a weak variable is added, even though R² rises.</p>`,
+ where:{model:'bm',cells:{R2:'hl',adjR2:'hl',ss_res:'s1',ms_res:'s2'},formula:`F = (SSE_red − <span class="c1">SSE_full</span>)/r ÷ <span class="c2">MSE_full</span>`,note:`<p>The reduced model (MachHrs only) had SSE = 2,505,723,500 and R² = 0.399278.</p>`},
+ worked:{model:'bm',prompt:`<p><b>Bendrix.</b> Does ProdRuns add explanatory power once MachHrs is in? n = 36, full k = 2, r = 1.</p>`,
+  steps:[
+   {h:'Hypotheses',b:'',calc:'H₀: β_ProdRuns = 0    H₁: β_ProdRuns ≠ 0'},
+   {h:'R² route',b:'',calc:`F = (0.866425 − 0.399278)/1 ÷ ((1 − 0.866425)/33) = ${((0.866425-0.399278)/((1-0.866425)/33)).toFixed(2)}`,xl:['=(0.866425-0.399278)/1/((1-0.866425)/33)']},
+   {h:'Same as t²',b:'One added variable, so F should equal t² of ProdRuns.',calc:`10.74289² = ${(10.74289**2).toFixed(2)} ✓`},
+   {h:'Decide',b:'',calc:`F_crit = F.INV.RT(0.05, 1, 33) = ${finvrt(0.05,1,33).toFixed(3)}`,xl:['=F.INV.RT(0.05, 1, 33)'],write:'F = 115.4 > 4.14, so reject H₀. ProdRuns significantly improves the model after controlling for MachHrs.'}
+  ]},
+ guided:{intro:`<p><b>Gender discrimination</b> (n = 200). Model A has Gender, YearsExp and Gender×YearsExp (R² = 0.644303). Model B adds <b>four</b> education dummies (R² = 0.734922, k = 7).</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'Partial F for the education block',ans:gEdu,mistakes:[{v:(0.734922-0.644303)/((1-0.734922)/192),msg:'Divide the R² gain by r = 4, the number of variables added.'},{v:((0.734922-0.644303)/4)/((1-0.734922)/196),msg:'Use the full model’s residual df: n − k − 1 = 200 − 7 − 1 = 192.'}],hints:['[(0.734922 − 0.644303)/4] ÷ [(1 − 0.734922)/192]']},
+   {id:'b',type:'num',prompt:'Critical F at 5%',ans:finvrt(0.05,4,192),hints:['F.INV.RT(0.05, 4, 192)']},
+   {id:'c',type:'mcq',prompt:'Decision',options:[{t:'Reject H₀: education jointly matters, given gender and experience',ok:true},{t:'Fail to reject H₀',msg:'F ≈ 16.4 is far above 2.42.'},{t:'Every education dummy is individually significant',msg:'Joint significance says nothing about each one. Commerce has p = 0.60.'}]},
+   {id:'d',type:'num',prompt:'Adjusted R² of Model B',ans:1-(1-0.734922)*199/192,pct:true,hints:['1 − (1 − 0.734922) × 199/192']},
+   {id:'e',type:'num',prompt:'Model A vs Gender + YearsExp only (R² = 0.493321): partial F for the interaction term (full k = 3)',ans:(0.644303-0.493321)/((1-0.644303)/196),hints:['(0.644303 − 0.493321)/1 ÷ ((1 − 0.644303)/196)','Check: it should be about 9.12118²']}
+  ]}},
+/* ---------- E5 ---------- */
+{id:'E5',part:'E',title:'Standardized coefficients: which matters more?',
+ rule:'β* = b × S_X / S_Y. Compare |β*|, not raw b. In simple regression β* = r.',
+ idea:`<p>Raw coefficients can’t be compared across variables, because one machine hour and one production run are different units. "Which variable has the <b>highest impact</b>?" needs <b>standardized coefficients</b>:</p>
+ <p class="formula">β*ⱼ = bⱼ × S_Xⱼ / S_Y</p>
+ <p>β* is the number of standard deviations Y changes per one-SD change in Xⱼ, holding the others fixed. Compare absolute values. SPSS prints it as "Standardized Coefficients Beta".</p>
+ <ul><li>In simple regression, β* equals the correlation r.</li><li>You can run it backwards: b = β* × S_Y / S_X, which recovers a blanked coefficient.</li><li>With strong multicollinearity, β* is not a reliable ranking of importance.</li></ul>`,
+ where:{model:'bm',cells:{b1:'s1',b2:'s2'},formula:`β* = b × S_X / S_Y &nbsp; (S_Y = 10,916.81, S_MachHrs = 198.78, S_ProdRuns = 8.675)`},
+ worked:{model:'bm',prompt:`<p><b>Bendrix.</b> ProdRuns has the bigger raw coefficient (883.6 vs 43.5). Does it matter more?</p>`,
+  steps:[
+   {h:'MachHrs',b:'',calc:`43.5364 × 198.7815 / 10916.81 = ${(43.5364*198.7815/10916.81).toFixed(4)}`,xl:['=43.5364*198.7815/10916.81']},
+   {h:'ProdRuns',b:'',calc:`883.6179 × 8.674905 / 10916.81 = ${(883.6179*8.674905/10916.81).toFixed(4)}`,xl:['=883.6179*8.674905/10916.81']},
+   {h:'Compare',b:'0.793 > 0.702.',write:'MachHrs has the larger standardized coefficient, so it has the somewhat stronger conditional association with overhead, despite its smaller raw coefficient.'}
+  ]},
+ guided:{intro:`<p><b>Wine quality</b> (S_quality = 0.808). Coefficients: alcohol 0.294 (S = 1.0656), volatile acidity −1.114 (S = 0.1790), sulphates 0.672 (S = 0.1695).</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'Standardized coefficient of alcohol',ans:0.294*1.0656/0.808,mistakes:[{v:0.294*0.808/1.0656,msg:'Multiply by S_X and divide by S_Y, not the other way round.'}]},
+   {id:'b',type:'num',prompt:'Standardized coefficient of volatile acidity',ans:-1.114*0.1790/0.808},
+   {id:'c',type:'mcq',prompt:'Which variable has the highest impact on quality?',options:[{t:'Alcohol (|β*| ≈ 0.39)',ok:true},{t:'Volatile acidity: its raw coefficient is the largest',msg:'Raw coefficients depend on units. Compare |β*|: 0.388 > 0.247.'},{t:'Sulphates',msg:'|β*| = 0.141, the smallest of the three.'}]},
+   {id:'d',type:'num',prompt:'Backwards: a predictor has β* = 0.792, S_X = 198.78, S_Y = 10,916.81. Raw coefficient b?',ans:0.792*10916.81/198.78,hints:['b = β* × S_Y / S_X']}
+  ]}},
+/* ---------- F1 ---------- */
+{id:'F1',part:'F',title:'Dummy variables and the base category',
+ rule:'m categories → m − 1 dummies. Intercept = base. Dummy coefficient = difference from base (others fixed). New base: subtract the new base’s coefficient from every dummy; add it to the intercept.',
+ idea:`<p>Categories (quarter, city, gender, degree) enter a regression as 0/1 <b>dummy variables</b>.</p>
+ <ul><li><b>m categories need m − 1 dummies.</b> The left-out one is the <b>base</b>. Including all m is the <i>dummy trap</i>: they sum to 1, which gives perfect multicollinearity with the intercept.</li>
+ <li><b>Intercept</b> = the base category’s value (when other X’s are 0). Each <b>dummy coefficient</b> = that category minus the base, holding the other predictors fixed.</li>
+ <li>A regression on dummies alone reproduces the <b>group means</b> exactly. The intercept is the base mean, and intercept + coefficient is each other group’s mean.</li>
+ <li><b>Change the base without re-running:</b> new intercept = old intercept + coefficient of the new base. New coefficient of each other category = its old coefficient − coefficient of the new base. The old base’s coefficient becomes −(new base’s old coefficient).</li>
+ <li>A dummy’s t-test compares that category with the <b>base only</b>. To test two non-base categories against each other, you need a model where one of them is the base.</li>
+ <li>With an intercept, the fitted equation passes through each group’s mean point. That lets you recover a group’s average X from the outputs.</li></ul>`,
+ where:{exhibits:[{title:'Forecasting: Sales on Year and quarter dummies (Q1 is the base), n = 16',cols:['','Coefficients','Std. Error','P-value'],rows:[['Intercept','170.25','4.2948','3.2E-13'],['Q2','−19.75','4.0491','0.0005'],['Q3','−29.25','4.0491','1.7E-05'],['Q4','−15.5','4.0491','0.0028'],['Year','−3.3','1.2804','0.0257']]}],note:`<p>There’s no Q1 row: it’s the base. Each quarter gets its own intercept and they share a slope, so the lines are parallel.</p>`},
+ worked:{prompt:`<p><b>Forecasting.</b> Write each quarter’s equation, then move the base to Q4.</p>`,exhibits:[{title:'Coefficients',cols:['Intercept','Q2','Q3','Q4','Year'],rows:[['170.25','−19.75','−29.25','−15.5','−3.3']]}],
+  steps:[
+   {h:'Per-quarter lines',b:'Add the quarter’s dummy to the intercept.',calc:'Q1: 170.25 − 3.3·Year   Q2: 150.50 − 3.3·Year   Q3: 141.00 − 3.3·Year   Q4: 154.75 − 3.3·Year'},
+   {h:'New intercept with Q4 as base',b:'',calc:'170.25 + (−15.5) = 154.75',xl:['=170.25-15.5']},
+   {h:'New dummy coefficients',b:'Subtract Q4’s old coefficient (−15.5) from each.',calc:'Q1: 0 − (−15.5) = +15.5   Q2: −19.75 + 15.5 = −4.25   Q3: −29.25 + 15.5 = −13.75',write:'With Q4 as base: Sales = 154.75 − 3.3·Year + 15.5·Q1 − 4.25·Q2 − 13.75·Q3.'},
+   {h:'What doesn’t change',b:'The fitted values, R², Sₑ and F are identical. Only the labels move.'}
+  ]},
+ guided:{intro:`<p><b>Gender discrimination</b> (Gender = 1 for female).<br>Model 1: Salary = 545,158.2 − 101,177 × Gender.<br>Model 2: Salary = 440,769.6 − 96,986.8 × Gender + 11,757.08 × YearsExp.<br>Education model (base: Arts): Intercept 314,754.12, Gender 47,144.93, Commerce 9,029.75 (p = 0.60), Science 71,980.85, Technology 41,040.34, PostGrad 112,641.15 (plus experience terms).</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'Average female salary in the sample (Model 1)',ans:545158.2-101177,hints:['Intercept + Gender coefficient']},
+   {id:'b',type:'num',prompt:'Coefficient of Technology if Science were the base',ans:41040.34-71980.85,mistakes:[{v:71980.85-41040.34,msg:'New coefficient = Technology − Science, which is negative.'}],hints:['41,040.34 − 71,980.85']},
+   {id:'c',type:'num',prompt:'Estimated starting salary (0 years) of a woman with a Science degree',ans:314754.12+47144.93+71980.85,hints:['Intercept + Gender + Science']},
+   {id:'d',type:'num',prompt:'Using Models 1 and 2, the average years of experience of <b>male</b> employees',ans:(545158.2-440769.6)/11757.08,hints:['Model 2 passes through the male mean point: 545,158.2 = 440,769.6 + 11,757.08 × Exp_male']},
+   {id:'e',type:'mcq',prompt:'Is the salary difference between Commerce and Science graduates significant, from this table alone?',options:[{t:'Can’t tell: both t-tests compare against Arts. Re-run with one of them as base.',ok:true},{t:'No, because Commerce has p = 0.60',msg:'That p-value compares Commerce with Arts, not with Science.'},{t:'Yes, because Science is significant',msg:'Science is significant against Arts. That doesn’t settle Commerce vs Science.'}]}
+  ]}},
+/* ---------- F2 ---------- */
+{id:'F2',part:'F',title:'Interactions: when the slope depends on the group',viz:'inter',
+ rule:'Y = β₀ + β₁D + β₂X + β₃(D·X). Base group: β₀ + β₂X. Other group: (β₀+β₁) + (β₂+β₃)X. β₃ = slope difference, and its t-test asks whether the slopes differ. Gap at X = β₁ + β₃X. Keep main effects when an interaction stays.',
+ idea:`<p>A dummy alone shifts the line up or down, giving parallel lines. To let the <b>slope</b> differ by group, add an <b>interaction</b>: the product of the dummy and the numeric variable.</p>
+ <p class="formula">Y = β₀ + β₁·D + β₂·X + β₃·(D·X)<br>D = 0: Y = β₀ + β₂X<br>D = 1: Y = (β₀ + β₁) + (β₂ + β₃)X</p>
+ <ul><li><b>β₃</b> is how much steeper (or flatter) the D = 1 group’s slope is. Its t-test is the test of "does the X effect differ by group?"</li>
+ <li><b>β₁</b> is now the gap at X = 0 only. The gap at any X is β₁ + β₃·X.</li>
+ <li>Keep β₁ and β₂ (the main effects) in the model whenever the interaction is kept, even if they look insignificant.</li>
+ <li>With several categories (cities), each category’s slope = base slope + its interaction coefficient.</li></ul>`,
+ where:{exhibits:[{title:'Salary on Gender, YearsExp and Gender×YearsExp (n = 200, R² = 0.644)',cols:['','Coefficients','Std. Error','P-value'],rows:[['Intercept','383,210.2','13,938.6','3.5E-69'],['Gender (1 = F)','34,699.71','18,955.74','0.0687'],['YearsExp','18,239.88','1,087.62','9.8E-40'],['Gender×YearsExp','−15,180.7','1,664.34','9.0E-17']]}],note:`<p>Toggle below to compare the parallel-lines model with the interaction model.</p>`},
+ worked:{prompt:`<p><b>Gender discrimination.</b> Write the male and female salary lines and interpret them.</p>`,
+  steps:[
+   {h:'Male (Gender = 0)',b:'',calc:'Salary = 383,210 + 18,240 × YearsExp'},
+   {h:'Female (Gender = 1)',b:'Add β₁ to the intercept and β₃ to the slope.',calc:'Salary = (383,210 + 34,700) + (18,240 − 15,181) × YearsExp = 417,910 + 3,059 × YearsExp'},
+   {h:'Does experience pay differently?',b:'The interaction p-value is 9.0E-17, so the slopes differ significantly.'},
+   {h:'Gap at 10 years',b:'',calc:'β₁ + β₃ × 10 = 34,700 − 151,807 = −117,107',xl:['=34699.71-15180.7*10'],write:'Women start slightly higher but gain only ₹3,059 per year of experience against ₹18,240 for men, so the gap against women widens with tenure.'}
+  ]},
+ guided:{intro:`<p><b>Education model</b> (base: Arts, male): Salary = 314,754.12 + 47,144.93·Gender + 17,430.62·YearsExp − 12,669.65·Gender·YearsExp + 9,029.75·Commerce + 71,980.85·Science + 41,040.34·Technology + 112,641.15·PostGrad. Interaction p = 4.5E-15.</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'Yearly salary increment for women',ans:17430.62-12669.65,mistakes:[{v:17430.62,msg:'That’s the men’s slope. Women’s = β₂ + β₃.'}],hints:['17,430.62 + (−12,669.65)']},
+   {id:'b',type:'num',prompt:'Predicted salary: woman, PostGrad, 5 years',ans:314754.12+47144.93+112641.15+5*(17430.62-12669.65),hints:['Intercept + Gender + PostGrad + 5 × (17,430.62 − 12,669.65)']},
+   {id:'c',type:'num',prompt:'Female − male salary gap at 10 years (same degree)',ans:47144.93-12669.65*10,mistakes:[{v:47144.93,msg:'That’s the gap at 0 years only. Add β₃ × 10.'}],hints:['β₁ + β₃ × 10']},
+   {id:'d',type:'mcq',prompt:'Does gender change the salary–experience relationship?',options:[{t:'Yes: the interaction is significant (p ≈ 4.5E-15)',ok:true},{t:'No: Gender’s own coefficient decides that',msg:'The Gender coefficient is about the intercept. The interaction decides the slope.'},{t:'Only if R² rises',msg:'Test the interaction coefficient (or use a partial F).'}]},
+   {id:'e',type:'mcq',prompt:'In a model with Gender×YearsExp, Gender alone has p = 0.07. Drop Gender?',options:[{t:'No. Keep main effects while their interaction is in the model',ok:true},{t:'Yes, it’s insignificant at 5%',msg:'Dropping it forces both lines to share an intercept and changes what the interaction means.'}]}
+  ]}},
+/* ---------- F3 ---------- */
+{id:'F3',part:'F',title:'Stepwise, forward and backward selection',
+ rule:'Step 1: largest |zero-order r| (R² = r²). Next: largest |partial r| among excluded variables, entered if p < p-in (0.05). Remove if p > p-out (0.10). Forward never removes, backward never re-adds. Excluded ≠ uncorrelated.',
+ idea:`<p>Stepwise regression builds a model one variable at a time.</p>
+ <ol style="max-width:68ch"><li><b>First variable:</b> the one with the largest <i>absolute zero-order correlation</i> with Y. Its R² = r², and its partial F equals the model F.</li>
+ <li><b>Next variable:</b> among the excluded variables, the one with the largest <i>partial correlation</i> (equivalently, the biggest partial F). It enters if its p-value &lt; <b>p-in</b> (JASP/SPSS default 0.05).</li>
+ <li><b>Re-check:</b> after each entry, any included variable with p &gt; <b>p-out</b> (default 0.10) is removed.</li>
+ <li>Stop when nothing qualifies to enter or leave.</li></ol>
+ <div class="tblwrap"><table class="plain"><tr><th>Method</th><th>Adds</th><th>Removes</th><th>Can undo a decision</th></tr><tr><td>Stepwise</td><td>Yes</td><td>Yes</td><td>Yes</td></tr><tr><td>Forward</td><td>Yes</td><td>No</td><td>No</td></tr><tr><td>Backward</td><td>No</td><td>Yes</td><td>No</td></tr></table></div>
+ <p style="margin-top:12px">The formula sheet’s thresholds are F-in &gt; 3.84 / p-in &lt; 0.05 and F-out &lt; 2.71 / p-out &gt; 0.10.</p>
+ <p>An <b>excluded</b> variable is not necessarily uncorrelated with Y. It usually just adds too little once the others are in, often because it overlaps with them.</p>`,
+ where:{exhibits:[{title:'Gender case: zero-order correlations with Salary (extract)',cols:['Variable','r'],rows:[['ORG Level F','0.673'],['Exp (Years)','0.617'],['Post Graduate','0.443'],['ORG Level A','−0.428'],['Gender','−0.351'],['ORG Level E','0.320']]},{title:'Excluded variables after step 1 (extract)',cols:['Variable','Beta In','Sig.','Partial'],rows:[['ORG Level E','0.385','0.000','0.518'],['ORG Level A','−0.322','0.000','−0.429'],['Post Graduate','0.292','0.000','0.382'],['Exp (Years)','0.331','0.000','0.355']]}]},
+ worked:{prompt:`<p><b>Gender case.</b> Run the first two steps.</p>`,
+  steps:[
+   {h:'Step 1',b:'The largest |r| with Salary is ORG Level F (0.673).',calc:'R² = 0.673087² = 0.4530',xl:['=0.673087^2']},
+   {h:'Step 2',b:'Among the excluded variables, ORG Level E has the largest |partial| (0.518), even though Exp (Years) had the bigger zero-order r. What matters now is what it adds beyond Level F.',calc:'R² = 0.453046 + 0.518² × (1 − 0.453046) = 0.5998'},
+   {h:'Check entry',b:'',calc:'Partial F = (0.599123 − 0.453046)/1 ÷ ((1 − 0.599123)/197) = 71.78, p ≈ 5.5E-15 < 0.05 → enters',write:'ORG Level E enters at step 2 because it has the largest partial correlation (0.518) among the excluded variables and its partial F-test is significant.'},
+   {h:'Re-check',b:'Re-test ORG Level F given Level E. It stays (p ≈ 0).'}
+  ]},
+ guided:{intro:`<p><b>Precision Watches.</b> Correlations with JobPerf: Seniority 0.43, Test1 0.58, Test2 0.52, Test3 0.62.</p>`,
+  items:[
+   {id:'a',type:'mcq',prompt:'Which variable enters first?',options:[{t:'Test3',ok:true},{t:'Test1',msg:'0.58 < 0.62.'},{t:'Seniority',msg:'It has the smallest correlation here.'}]},
+   {id:'b',type:'num',prompt:'R² after step 1',ans:0.62**2,pct:true,mistakes:[{v:0.62,msg:'R² = r².'}]},
+   {id:'c',type:'mcq',prompt:'What decides the <b>second</b> variable?',options:[{t:'The largest partial correlation among excluded variables (if p < p-in)',ok:true},{t:'The next-largest zero-order correlation',msg:'After step 1, what matters is what a variable adds beyond the variables already in.'},{t:'The largest raw coefficient',msg:'Raw coefficients depend on units.'}]},
+   {id:'d',type:'mcq',prompt:'Stepwise left Gini out of the final model. So Gini is uncorrelated with income?',options:[{t:'No. It just adds too little beyond the included variables',ok:true},{t:'Yes, excluded means no relationship',msg:'Gini’s zero-order r with income is −0.338. It was excluded for adding little, not for having no relationship.'}]},
+   {id:'e',type:'mcq',prompt:'Which method can drop a variable it added earlier?',options:[{t:'Stepwise',ok:true},{t:'Forward',msg:'Forward never removes.'},{t:'Backward',msg:'Backward only removes and never re-adds.'}]}
+  ]}},
+/* ---------- G1 ---------- */
+{id:'G1',part:'G',title:'Turning a prediction into a decision',viz:'fivept',
+ rule:'m = Ŷ, s = prediction SE. Five points m ± 0.5s, m ± 1.3s, m, each with p = 0.2. EV = average payoff. Value of perfect info = E[best payoff per point] − best EV.',
+ idea:`<p>Case questions (Colonial Broadcasting, Mysore Silk’s ₹40,000 offer) end with a <b>decision</b>. The regression gives a prediction m = Ŷ and an uncertainty s, the SE for a single outcome. Then:</p>
+ <ol style="max-width:68ch"><li>Approximate the outcome’s distribution with <b>five equally likely points</b>: m − 1.3s, m − 0.5s, m, m + 0.5s, m + 1.3s, each with probability 0.2.</li>
+ <li>Work out the <b>payoff</b> of each option at each point (watch caps, thresholds and rebates).</li>
+ <li><b>Expected value</b> = the average of the five payoffs. Compare it with the alternative.</li>
+ <li><b>Value of perfect information:</b> if you knew the outcome, you’d pick the best option at each point. Its expected value minus the best EV without the information is the most you’d pay for a perfect forecast.</li></ol>
+ <p>Because of thresholds, the payoff isn’t linear, so the payoff at m is <i>not</i> the expected payoff. Always average over the points.</p>`,
+ where:{exhibits:[{title:'Colonial Broadcasting: the Harsanyi Electric offer',cols:['Term','Value'],rows:[['Payment if rating ≥ 19','$7,500,000'],['Rebate per rating point below 19','$1,000,000 (pro-rated)'],['Risk-free alternative','$5,000,000']]}],note:`<p>Drag m below and watch when the offer becomes worth taking.</p>`},
+ worked:{prompt:`<p><b>Colonial Q11.</b> A fact-based movie with no star, Monday in March: the regression predicts m = 14.8814 with s = 1.905. Harsanyi or the fixed $5M?</p>`,
+  steps:[
+   {h:'Five rating points',b:'',calc:CB.p.map(v=>v.toFixed(4)).join('   ')},
+   {h:'Harsanyi payment at each',b:'All are below 19, so the payment is 7.5M − (19 − rating) × 1M.',calc:CB.f.map(v=>'$'+Math.round(v).toLocaleString('en-US')).join('   '),xl:['=7500000-(19-(14.8814-1.3*1.905))*1000000']},
+   {h:'Expected value',b:'',calc:`EV = $${Math.round(CB.ev).toLocaleString('en-US')}  <  $5,000,000`,write:'Take the fixed $5,000,000. The Harsanyi offer’s expected payment is only about $3.38M.'},
+   {h:'Q12: value of perfect information',b:'With a perfect forecast you’d take Harsanyi only when it beats $5M (the top point, $5.86M).',calc:`E[best per point] = (4 × 5,000,000 + ${Math.round(CB.f[4]).toLocaleString('en-US')})/5 = ${Math.round(CB.vpi+5e6).toLocaleString('en-US')}   →   VPI = $${Math.round(CB.vpi).toLocaleString('en-US')}`}
+  ]},
+ guided:{intro:`<p>A Sunday slot after a strong lead-in raises the prediction to <b>m = 17.6</b> (s = 1.905). Same offer. Watch the top point: it crosses 19, where the payment is capped.</p>`,
+  items:[
+   {id:'a',type:'num',prompt:'Highest of the five rating points (m + 1.3s)',ans:17.6+1.3*1.905},
+   {id:'b',type:'num',prompt:'Harsanyi’s payment at that point',ans:G16.f[4],mistakes:[{v:7.5e6-(19-(17.6+1.3*1.905))*1e6,msg:'Above 19 there’s no bonus: the payment is capped at $7,500,000.'}],hints:['Is the rating at least 19?']},
+   {id:'c',type:'num',prompt:'Expected Harsanyi payment',ans:G16.ev,mistakes:[{v:fee(17.6),msg:'That’s the payment at m. With a threshold the average of the five payoffs can differ, so compute all five.'}],hints:['Average the five payments.']},
+   {id:'d',type:'mcq',prompt:'Decision',options:[{t:'Take Harsanyi',ok:true},{t:'Take the fixed $5,000,000',msg:`EV ≈ $${Math.round(G16.ev).toLocaleString('en-US')} > $5M.`}]},
+   {id:'e',type:'num',prompt:'Value of perfect information',ans:G16.vpi,hints:['At each point take max(Harsanyi, 5M), average them, then subtract 5,000,000.']}
+  ]}}
+);
+
+/* ================= Held-out past-paper tests ================= */
+const H9=pred(HWI,9),hwTmean=(H9.yh-80)/H9.seM;
+const JP1k=pred(JPI,1000),I50=pred(IMI,50);
+const WC=cor(0.476,-0.391,-0.202);
+const mysF=((642.517-634.343)/2)/1.823;
+const JB=pred({n:80,xbar:18.89,sx:5.00,se:Math.sqrt(93.134),b0:48.928,b1:0.891},15);
+const cetP=27.68-0.05*91+5.92+3.08+0.59*91;
+const usd=v=>'$'+Math.round(v).toLocaleString('en-US');
+
+TESTS.push(
+{id:'T3',title:'Predictions and intervals',source:'Hollywood, JP Nagar and Immigrant wages papers',pre:['C1','C2'],
+ caseHtml:`<p>Three simple regressions from old papers. Use α = 0.05 unless a question says otherwise.</p>`,
+ exhibits:[
+  {title:'Hollywood movies (n = 60): Receipts ($M) on ProdCost ($M)',cols:['','Value'],rows:[['Equation','Receipts = 21.100 + 7.092 × ProdCost'],['Sₑ (from the ANOVA)',HW.v.se.toFixed(3)],['ProdCost mean / SD / min / max','8.74 / 3.72 / 3.1 / 15.1']]},
+  {title:'JP Nagar houses (n = 414): Price_PSQFT on DIS_METRO_STN (m)',cols:['','Value'],rows:[['Equation','Price = 9170.2854 − 1.4524 × Distance'],['Sₑ','2013.7079'],['Distance mean / SD','1083.886 / 1262.110']]},
+  {title:'Immigrant populations (n = 35 groups): AvgWage ($/week) on PercentPopE',cols:['','Value'],rows:[['Equation','AvgWage = 7.433 + 0.070 × PercentPopE'],['Sₑ','1.26'],['PercentPopE mean / SD / range','61.1343 / 25.00183 / 20.3–100']]}],
+ qs:[
+  {n:'1',tags:['C1'],pts:1,prompt:'Hollywood: average Receipts for movies with a production cost of $9M.',items:[{id:'a',type:'num',prompt:'Ŷ ($M)',ans:H9.yh}],explain:`21.100 + 7.092 × 9 = ${H9.yh.toFixed(3)}.`,xl:['=21.1+7.092*9']},
+  {n:'2',tags:['C1','C2','B1'],pts:3,prompt:'Hollywood: test the hypothesis that average Receipts for movies costing $9M are expected to be <b>over $80M</b>.',
+   items:[{id:'a',type:'mcq',prompt:'Hypotheses',options:[{t:'H₀: μ ≤ 80, H₁: μ > 80 (right-tailed)',ok:true},{t:'H₀: μ ≥ 80, H₁: μ < 80'},{t:'H₀: μ = 80, H₁: μ ≠ 80'}]},{id:'b',type:'num',prompt:'SE of the mean prediction',ans:H9.seM},{id:'c',type:'num',prompt:'t statistic',ans:hwTmean,tol:0.012},{id:'d',type:'mcq',prompt:'Conclusion',options:[{t:'Reject H₀: average receipts exceed $80M',ok:true},{t:'Fail to reject H₀'}]}],
+   explain:`An average over all $9M movies, so use SE(mean) = ${HW.v.se.toFixed(3)} × √(1/60 + (9 − 8.74)²/(59 × 3.72²)) = ${H9.seM.toFixed(4)}. t = (${H9.yh.toFixed(3)} − 80)/${H9.seM.toFixed(4)} = ${hwTmean.toFixed(3)} > T.INV(0.95, 58) = ${tinv(0.95,58).toFixed(3)}, so reject H₀.`,xl:[`=${HW.v.se.toFixed(4)}*SQRT(1/60+(9-8.74)^2/(59*3.72^2))`]},
+  {n:'3',tags:['C1','C2'],pts:2,prompt:'Hollywood: at 95% confidence, the <b>maximum</b> Receipts for a <b>specific</b> movie with a $9M production cost.',items:[{id:'a',type:'num',prompt:'Maximum receipts ($M)',ans:H9.yh+tinv(0.95,58)*H9.seP,alts:[H9.yh+tinv(0.975,58)*H9.seP]}],
+   explain:`One movie → SE(pred) = ${H9.seP.toFixed(4)}. One-sided upper bound: ${H9.yh.toFixed(3)} + T.INV(0.95, 58) × ${H9.seP.toFixed(4)} = ${(H9.yh+tinv(0.95,58)*H9.seP).toFixed(2)}. The two-sided 95% upper limit (${(H9.yh+tinv(0.975,58)*H9.seP).toFixed(2)}) is also accepted. Say which one you used.`,xl:[`=${H9.yh.toFixed(3)}+T.INV(0.95,58)*${H9.seP.toFixed(4)}`]},
+  {n:'4',tags:['C2'],pts:2,prompt:'Hollywood: how likely is it that a movie costing $9M earns <b>$100M or more</b>?',items:[{id:'a',type:'num',prompt:'Probability',ans:rtail((100-H9.yh)/H9.seP,58),pct:true}],
+   explain:`One movie → SE(pred). t = (100 − ${H9.yh.toFixed(3)}) / ${H9.seP.toFixed(4)} = ${((100-H9.yh)/H9.seP).toFixed(3)}; P = T.DIST.RT(t, 58) = ${rtail((100-H9.yh)/H9.seP,58).toFixed(4)}.`,xl:[`=T.DIST.RT((100-${H9.yh.toFixed(3)})/${H9.seP.toFixed(4)},58)`]},
+  {n:'5',tags:['C1'],pts:1,prompt:'"The expected Receipts for a low-budget movie with a production cost of $1M is $28.192M." True?',items:[{id:'a',type:'mcq',prompt:'',options:[{t:'Not reliable: $1M is outside the observed range (3.1–15.1), so it’s an extrapolation',ok:true},{t:'True: just plug 1 into the equation'}]}],explain:'The arithmetic is right, but the line was only fitted between 3.1 and 15.1. Below that, nothing says the relationship holds.'},
+  {n:'6',tags:['C2'],pts:1,prompt:'JP Nagar: at what distance from the metro is the <b>average</b> price ₹6,000 per sq ft?',items:[{id:'a',type:'num',prompt:'Distance (m)',ans:(6000-9170.2854)/-1.4524}],explain:`(6000 − 9170.2854)/(−1.4524) = ${((6000-9170.2854)/-1.4524).toFixed(1)} m.`,xl:['=(6000-9170.2854)/-1.4524']},
+  {n:'7',tags:['C2'],pts:2,prompt:'JP Nagar: for houses 1 km from the metro, the probability that the <b>average</b> price per sq ft exceeds ₹8,500.',items:[{id:'a',type:'num',prompt:'Probability',ans:rtail((8500-JP1k.yh)/JP1k.seM,412),abs:0.001}],
+   explain:`Average → SE(mean) = 2013.7079 × √(1/414 + (1000 − 1083.886)²/(413 × 1262.11²)) = ${JP1k.seM.toFixed(2)}. Ŷ = ${JP1k.yh.toFixed(2)}, so t = ${((8500-JP1k.yh)/JP1k.seM).toFixed(2)} and P ≈ 0. An average is pinned down very tightly with 414 houses. For a single house it would be ${rtail((8500-JP1k.yh)/JP1k.seP,412).toFixed(3)}.`,xl:[`=2013.7079*SQRT(1/414+(1000-1083.886)^2/(413*1262.11^2))`]},
+  {n:'8',tags:['C1'],pts:2,prompt:'Immigrant wages: the 95% prediction interval of the average weekly wage of a <b>specific</b> immigrant population with 50% English speakers (Sₑ = 1.26).',items:[{id:'a',type:'num',prompt:'Lower limit',ans:I50.yh-tinv(0.975,33)*I50.seP},{id:'b',type:'num',prompt:'Upper limit',ans:I50.yh+tinv(0.975,33)*I50.seP}],
+   explain:`Ŷ = 7.433 + 0.070 × 50 = ${I50.yh.toFixed(3)}. SE(pred) = 1.26 × √(1 + 1/35 + (50 − 61.1343)²/(34 × 25.00183²)) = ${I50.seP.toFixed(4)}. ± T.INV.2T(0.05, 33) = ${tinv(0.975,33).toFixed(4)} gives (${(I50.yh-tinv(0.975,33)*I50.seP).toFixed(3)}, ${(I50.yh+tinv(0.975,33)*I50.seP).toFixed(3)}).`,xl:['=1.26*SQRT(1+1/35+(50-61.1343)^2/(34*25.00183^2))']},
+  {n:'9',tags:['C2'],pts:2,prompt:'Immigrant wages: what is the chance that an immigrant group with 50% English speakers gets paid <b>more than $12</b> on average in a week?',items:[{id:'a',type:'num',prompt:'Probability',ans:rtail((12-I50.yh)/I50.seP,33),pct:true}],
+   explain:`Each row is one population, so "a group’s average wage" is a single observation and needs SE(pred). t = (12 − ${I50.yh.toFixed(3)})/${I50.seP.toFixed(4)} = ${((12-I50.yh)/I50.seP).toFixed(3)}; P = ${rtail((12-I50.yh)/I50.seP,33).toFixed(4)}. Using SE(mean) would give ${rtail((12-I50.yh)/I50.seM,33).toFixed(4)}, which is the classic trap.`}
+ ]},
+
+{id:'T4',title:'Per capita income (2017)',source:'2017 exam, Question 1',pre:['E2','E3','E4','E5','F3'],
+ caseHtml:`<p>Per capita income of 20 countries is analysed using the Corruption Index (CI, higher = less corrupt), the Gini index, and CS (1 = communist state).</p>`,
+ exhibits:[
+  {title:'Table 2: Descriptive statistics (N = 20)',cols:['','Mean','Std. Deviation'],rows:[['CI','61.700','20.6171'],['Gini','34.740','7.3846'],['CS','.250','.4443'],['PerCapita','37789.050','15847.4829']]},
+  {title:'Table 3: Correlations',cols:['','CI','Gini','CS','PerCapita'],rows:[['CI','1','−.464','−.612','.862'],['Gini','−.464','1','.253','−.338'],['CS','−.612','.253','1','−.556'],['PerCapita','.862','−.338','−.556','1']]},
+  {title:'Table 5: Model 1 coefficients (PerCapita on CI)',cols:['','B','Std. Error','Beta'],rows:[['(Constant)','−3112.753','5950.818',''],['CI','662.914','91.706','.862']]},
+  {title:'Table 6: Model 2 coefficients (PerCapita on CS)',cols:['','B','Std. Error','Beta'],rows:[['(Constant)','42743.933','3495.319',''],['CS','','6990.639','−.556']]},
+  {title:'Table 7: Stepwise, step 2 (CI, Gini)',cols:['','B','Std. Error','Zero-order','Partial','Part'],rows:[['(Constant)','−10781.284','14572.250','','',''],['CI','691.235','105.487','.862','.846','.797'],['Gini','','','−.338','.139','.070']]},
+  {title:'Table 9: Excluded variables after CI (all three candidates)',cols:['','Beta In','t','Sig.','Partial','Tolerance'],rows:[['Gini','.079','.579','.570','.139','.785'],['CS','−.044','−.287','.777','−.070','.625']]}],
+ qs:[
+  {n:'1',tags:['A4'],pts:1,prompt:'What proportion of the variation in per capita income is explained by CI (Model 1)?',items:[{id:'a',type:'num',prompt:'R²',ans:0.862**2,pct:true}],explain:'Simple regression: R² = r² = 0.862² = 0.743.',xl:['=0.862^2']},
+  {n:'2',tags:['F1','E5'],pts:2,prompt:'Calculate the average per capita income of communist states (Model 2). The CS coefficient is blanked.',items:[{id:'a',type:'num',prompt:'Average per capita, communist states',ans:42743.933-0.556*15847.4829/0.4443,tol:0.006}],
+   explain:`Recover B from Beta: B = β* × S_Y/S_X = −0.556 × 15847.4829/0.4443 = ${(-0.556*15847.4829/0.4443).toFixed(1)}. Communist average = intercept + B = ${(42743.933-0.556*15847.4829/0.4443).toFixed(1)}.`,xl:['=42743.933+(-0.556*15847.4829/0.4443)']},
+  {n:'3',tags:['E3'],pts:2,prompt:'What is R² after adding Gini to Model 1?',items:[{id:'a',type:'num',prompt:'R²',ans:0.862**2+0.07**2,pct:true}],explain:'R²_new = R²_old + part² = 0.862² + 0.070² = 0.7479.',xl:['=0.862^2+0.07^2']},
+  {n:'4',tags:['E4'],pts:3,prompt:'Is Gini worth adding to the model at 5% significance?',items:[{id:'a',type:'num',prompt:'Partial F',ans:(0.862**2+0.0049-0.862**2)/((1-(0.862**2+0.0049))/17),tol:0.02},{id:'b',type:'num',prompt:'Critical F',ans:finvrt(0.05,1,17)},{id:'c',type:'mcq',prompt:'Decision',options:[{t:'Not worth adding (fail to reject H₀)',ok:true},{t:'Worth adding'}]}],
+   explain:`F = (0.7479 − 0.7430)/1 ÷ ((1 − 0.7479)/17) = ${((0.0049)/((1-(0.862**2+0.0049))/17)).toFixed(3)}, far below F.INV.RT(0.05, 1, 17) = ${finvrt(0.05,1,17).toFixed(2)}. That matches Table 9's Sig. = 0.570.`},
+  {n:'5',tags:['E2'],pts:2,prompt:'Calculate the variance inflation factor between CI and Gini. What can you conclude?',items:[{id:'a',type:'num',prompt:'VIF',ans:1/(1-0.464**2)},{id:'b',type:'mcq',prompt:'Conclusion',options:[{t:'No serious multicollinearity (VIF well below 4–10)',ok:true},{t:'Severe multicollinearity'}]}],explain:'VIF = 1/(1 − 0.464²) = 1.274, which matches Tolerance 0.785 in Table 9. Not a concern.',xl:['=1/(1-0.464^2)']},
+  {n:'6',tags:['F3'],pts:1,prompt:'From Tables 8 and 9, can we conclude there is no statistically significant relationship between per capita income and Gini or CS?',items:[{id:'a',type:'mcq',prompt:'',options:[{t:'No. They’re excluded because they add little beyond CI, not because they’re unrelated',ok:true},{t:'Yes. Excluded variables have no relationship with Y'}]}],explain:'Their zero-order correlations (−0.338 and −0.556) show a relationship. CS is fairly strongly correlated with CI (−0.612), so once CI is in, little is left for CS or Gini to add.'}
+ ]},
+
+{id:'T5',title:'Wine quality',source:'DS2 old exam, Question 2',pre:['B3','E1','E2','E3','F3'],
+ caseHtml:`<p>1,599 European wines. Quality (1–10) is regressed on physicochemical variables. Regression #1 is a stepwise model whose first variable is blanked.</p>`,
+ exhibits:[
+  {title:'Table 2.2: Descriptive statistics',cols:['','Mean','Std. Deviation'],rows:[['quality','5.64','.808'],['volatileacidity','.5278','.1790'],['citricacid','.2710','.1948'],['sulphates','.6581','.1695'],['alcohol','10.4298','1.0656']]},
+  {title:'Table 2.3: Correlation matrix',cols:['','quality','volatileacidity','citricacid','sulphates','alcohol'],rows:[['quality','1','−.391','.226','.251','.476'],['volatileacidity','−.391','1','−.552','−.261','−.202'],['citricacid','.226','−.552','1','.313','.110'],['sulphates','.251','−.261','.313','1','.094'],['alcohol','.476','−.202','.110','.094','1']]},
+  {title:'Regression #1: Coefficients (stepwise)',cols:['Model','','B','Std. Error','Beta','t'],rows:[['1','(Constant)','1.875','.175','','10.732'],['2','(Constant)','3.095','.184','','16.778'],['2','volatileacidity','','.095','','−14.524'],['3','(Constant)','2.611','.196','','13.342'],['3','volatileacidity','−1.221','.097','−.271','−12.591'],['3','sulphates','.679','.101','.143','6.737']]},
+  {title:'Regression #2: adds fixed acidity, density, pH',cols:['','B','Std. Error','Beta','Sig.','Tolerance','VIF'],rows:[['alcohol','.294','.023','.388','.000','.462','2.163'],['volatileacidity','−1.114','.102','−.247','.000','.813','1.230'],['sulphates','.672','.105','.141','.000','.853','1.173'],['fixedacidity','.045','.021','.098','.033','.198','5.055'],['density','−28.167','17.218','−.066','.102','.256','3.910'],['pH','−.039','.172','−.007','.821','.385','2.597']]}],
+ qs:[
+  {n:'1',tags:['F3'],pts:1,prompt:'What is the predictor variable used in Model 1?',items:[{id:'a',type:'mcq',prompt:'',options:[{t:'alcohol',ok:true},{t:'volatileacidity'},{t:'sulphates'},{t:'citricacid'}]}],explain:'Stepwise starts with the largest |zero-order r| with quality: alcohol (0.476) beats volatile acidity (|−0.391|).'},
+  {n:'2',tags:['E3'],pts:3,prompt:'At the end of Model 1, find the partial and part correlations of volatile acidity. What proportion of quality’s variation does Model 2 explain?',
+   items:[{id:'a',type:'num',prompt:'Partial correlation',ans:WC.partial},{id:'b',type:'num',prompt:'Part correlation',ans:WC.part},{id:'c',type:'num',prompt:'R² of Model 2',ans:0.476**2+WC.part**2,pct:true}],
+   explain:`Numerator = −0.391 − 0.476 × (−0.202) = ${(-0.391+0.476*0.202).toFixed(5)}. Part = ÷ √(1 − 0.202²) = ${WC.part.toFixed(4)}. Partial = ÷ √((1 − 0.476²)(1 − 0.202²)) = ${WC.partial.toFixed(4)}. R² = 0.476² + part² = ${(0.476**2+WC.part**2).toFixed(4)}.`,xl:['=(-0.391-0.476*-0.202)/SQRT(1-0.202^2)','=(-0.391-0.476*-0.202)/SQRT((1-0.476^2)*(1-0.202^2))']},
+  {n:'3',tags:['A6'],pts:1,prompt:'Determine the coefficient of volatile acidity in Model 2.',items:[{id:'a',type:'num',prompt:'B',ans:-14.524*0.095}],explain:'B = t × SE = −14.524 × 0.095 = −1.380.',xl:['=-14.524*0.095']},
+  {n:'4',tags:['B1','B3'],pts:3,prompt:'A connoisseur believes a unit increase in volatile acidity <b>cannot</b> decrease quality by <b>more than 1</b> unit. Test this at 95% using Model 3.',
+   items:[{id:'a',type:'mcq',prompt:'Hypotheses',options:[{t:'H₀: β ≥ −1, H₁: β < −1 (left-tailed)',ok:true},{t:'H₀: β ≤ −1, H₁: β > −1'},{t:'H₀: β ≥ 1, H₁: β < 1'}]},{id:'b',type:'num',prompt:'t statistic',ans:(-1.221+1)/0.097},{id:'c',type:'num',prompt:'Critical value',ans:tinv(0.05,1595)},{id:'d',type:'mcq',prompt:'Conclusion',options:[{t:'Reject the claim: quality falls by more than 1 unit',ok:true},{t:'The claim stands'}]}],
+   explain:`t = (−1.221 − (−1))/0.097 = ${((-1.221+1)/0.097).toFixed(3)} < T.INV(0.05, 1595) = ${tinv(0.05,1595).toFixed(3)}, so reject H₀. The data says the drop is steeper than 1 unit.`,xl:['=(-1.221+1)/0.097','=T.INV(0.05,1595)']},
+  {n:'5',tags:['E1'],pts:2,prompt:'Fixed acidity is negatively correlated with volatile acidity but positively correlated with quality. If fixed acidity is removed from Regression #2, what happens to the volatile acidity coefficient?',items:[{id:'a',type:'mcq',prompt:'',options:[{t:'It becomes more negative (negative bias)',ok:true},{t:'It becomes less negative (positive bias)'},{t:'No change'}]}],explain:'β₂ (fixed acidity → quality) > 0 and δ₁ (fixed acidity with volatile acidity) < 0, so the bias β₂δ₁ < 0. Volatile acidity absorbs some of fixed acidity’s positive effect with a negative sign, so its coefficient moves further below −1.114.'},
+  {n:'6',tags:['E2'],pts:1,prompt:'Regression #2: which variable shows the strongest multicollinearity, and is it severe?',items:[{id:'a',type:'mcq',prompt:'',options:[{t:'Fixed acidity (VIF 5.06): worth investigating, below the severe level of 10',ok:true},{t:'Density (VIF 3.91): severe'},{t:'None: all tolerances are above 0.1, so there’s nothing to look at'}]}],explain:'Fixed acidity has the highest VIF (tolerance 0.198). It passes the > 4 "investigate" line but not the > 10 "severe" line.'}
+ ]},
+
+{id:'T6',title:'Mysore Silk Emporium',source:'DS2 old midterm',pre:['E4','F1','F2','G1'],
+ caseHtml:`<p>352 households in Bangalore, Chennai, Hyderabad and Kochi. Purchase is in ₹'000, Income in ₹ lakh per month. M = 1 for middle-aged and S = 1 for senior earning members (Young is the base). Blr, Chn, Hyd are city dummies (Kochi is the base), and Blr_Inc = Income × Blr, and so on.</p>`,
+ exhibits:[
+  {title:'Output 1: Purchase on Income',cols:['','Coef','SE','p','',''],rows:[['Intercept','1.036','0.174','0.000','R² 0.413','SSE 642.517 (df 350)'],['Income','0.654','0.042','0.000','','']]},
+  {title:'Output 2: Purchase on M, S',cols:['','Coef','SE','p','',''],rows:[['Intercept','3.302','0.167','0.000','R² 0.007','F 1.318, Sig F 0.269'],['M','0.342','0.221','0.122','',''],['S','0.300','0.249','0.230','','']]},
+  {title:'Output 3: Purchase on M, S, Income',cols:['','Coef','SE','p','',''],rows:[['Intercept','0.812','0.204','0.000','R² 0.420','SSE 634.343 (df 348), MSE 1.823'],['M','0.339','0.169','0.046','',''],['S','0.306','0.191','0.110','',''],['Income','0.654','0.042','0.000','','']]},
+  {title:'Output 4: Purchase on Blr, Chn, Hyd, Income',cols:['','Coef','SE','p'],rows:[['Intercept','−0.201','0.172','0.244'],['Blr','1.910','0.165','0.000'],['Chn','1.762','0.173','0.000'],['Hyd','1.720','0.168','0.000'],['Income','0.622','0.035','0.000']]},
+  {title:'Output 5: Purchase on Income, Blr_Inc, Chn_Inc, Hyd_Inc',cols:['','Coef','SE','p'],rows:[['Intercept','1.280','0.142','0.000'],['Income','0.217','0.046','0.000'],['Blr_Inc','0.522','0.040','0.000'],['Chn_Inc','0.473','0.044','0.000'],['Hyd_Inc','0.459','0.039','0.000']]},
+  {title:'Output 6: Purchase on Kochi_Inc, Income, Chn_Inc',cols:['','Coef','SE','p'],rows:[['Intercept','1.299','0.142','0.000'],['Kochi_Inc','−0.488','0.035','0.000'],['Income','0.701','0.034','0.000'],['Chn_Inc','−0.015','0.036','0.688']]}],
+ qs:[
+  {n:'1',tags:['F1'],pts:2,prompt:'Average purchase of young, middle-aged and senior households. Are they significantly different?',items:[{id:'a',type:'num',prompt:'Young',ans:3.302},{id:'b',type:'num',prompt:'Middle-aged',ans:3.644},{id:'c',type:'num',prompt:'Senior',ans:3.602},{id:'d',type:'mcq',prompt:'Significance (5%)',options:[{t:'No group differs significantly (M p = 0.122, S p = 0.230; overall F p = 0.269)',ok:true},{t:'Middle-aged differ significantly from young'},{t:'All three differ'}]}],explain:'A dummy-only model gives group means: young = 3.302, middle = 3.302 + 0.342, senior = 3.302 + 0.300. Neither dummy is significant, and the overall F (p = 0.269) agrees.'},
+  {n:'2',tags:['E4'],pts:3,prompt:'Does introducing M and S to Model 1 improve it significantly?',items:[{id:'a',type:'num',prompt:'Partial F',ans:mysF,alts:[((0.42-0.413)/2)/((1-0.42)/348)],tol:0.01},{id:'b',type:'num',prompt:'Critical F',ans:finvrt(0.05,2,348)},{id:'c',type:'mcq',prompt:'Decision',options:[{t:'No significant improvement',ok:true},{t:'Significant improvement'}]}],
+   explain:`F = [(642.517 − 634.343)/2] ÷ 1.823 = ${mysF.toFixed(3)} (the R² route gives 2.1 because of rounding). F.INV.RT(0.05, 2, 348) = ${finvrt(0.05,2,348).toFixed(3)}, so the age dummies don’t add significant explanatory power.`,xl:['=((642.517-634.343)/2)/1.823']},
+  {n:'3',tags:['F1'],pts:3,prompt:'Average income of all households is ₹3.809 lakh. What can you infer about the average income of middle-aged and senior households?',items:[{id:'a',type:'num',prompt:'Implied average income, middle-aged',ans:(3.644-0.812-0.339)/0.654},{id:'b',type:'num',prompt:'Implied average income, senior',ans:(3.602-0.812-0.306)/0.654},{id:'c',type:'mcq',prompt:'Compared with 3.809',options:[{t:'Middle-aged slightly above, senior slightly below',ok:true},{t:'Both above'},{t:'Both below'}]}],
+   explain:`Output 3 passes through each group’s mean point: mean purchase_M = 0.812 + 0.339 + 0.654 × Inc_M, and Output 2 says mean purchase_M = 3.644. So Inc_M = (3.644 − 1.151)/0.654 = ${((3.644-0.812-0.339)/0.654).toFixed(3)}. Similarly Inc_S = ${((3.602-0.812-0.306)/0.654).toFixed(3)}.`},
+  {n:'4',tags:['F1'],pts:2,prompt:'Output 4: average purchase difference, Bangalore vs Kochi and Hyderabad vs Kochi. Significant?',items:[{id:'a',type:'num',prompt:'Bangalore − Kochi',ans:1.91},{id:'b',type:'num',prompt:'Hyderabad − Kochi',ans:1.72},{id:'c',type:'mcq',prompt:'Significance',options:[{t:'Both significant (p ≈ 0)',ok:true},{t:'Neither'}]}],explain:'Kochi is the base, so each city dummy is that city minus Kochi at the same income. Both p-values are about 0.'},
+  {n:'5',tags:['F2'],pts:2,prompt:'Households in Bangalore and in Chennai with average income ₹2 lakh: most accurate estimate of average purchase (Output 5).',items:[{id:'a',type:'num',prompt:'Bangalore',ans:1.28+(0.217+0.522)*2},{id:'b',type:'num',prompt:'Chennai',ans:1.28+(0.217+0.473)*2}],explain:'Bangalore: 1.280 + (0.217 + 0.522) × 2 = 2.758. Chennai: 1.280 + (0.217 + 0.473) × 2 = 2.660 (₹’000). Output 5 lets each city have its own slope, so it’s the most flexible model.',xl:['=1.28+(0.217+0.522)*2']},
+  {n:'6',tags:['F2'],pts:3,prompt:'Difference in the purchase increase for a ₹1 lakh income rise: Bangalore vs Kochi, and Bangalore vs Chennai. Significant?',items:[{id:'a',type:'num',prompt:'Bangalore − Kochi slope',ans:0.522},{id:'b',type:'mcq',prompt:'Significant?',options:[{t:'Yes (Blr_Inc p ≈ 0 in Output 5)',ok:true},{t:'No'}]},{id:'c',type:'num',prompt:'Bangalore − Chennai slope',ans:0.522-0.473},{id:'d',type:'mcq',prompt:'Significant?',options:[{t:'No: Output 6 shows Chennai’s slope isn’t different from the Bangalore/Hyderabad slope (p = 0.688)',ok:true},{t:'Yes, since both interaction terms are significant'}]}],
+   explain:'In Output 5 Kochi is the base, so Blr_Inc = 0.522 is the Bangalore − Kochi slope gap (significant). Bangalore − Chennai = 0.522 − 0.473 = 0.049, but each p-value only compares with Kochi. Output 6 pools Bangalore and Hyderabad into the Income slope and shows Chn_Inc = −0.015 (p = 0.688), so there’s no significant slope difference.'},
+  {n:'7',tags:['G1','F2'],pts:3,prompt:'A marketer offers 100 new Bangalore households with income uniform between ₹2 and ₹3 lakh. At least 20% will purchase. Fee: ₹40,000. Worth it?',items:[{id:'a',type:'num',prompt:'Expected purchase per buying household (₹’000)',ans:1.28+0.739*2.5},{id:'b',type:'num',prompt:'Expected total purchases from 20 households (₹)',ans:20*(1.28+0.739*2.5)*1000},{id:'c',type:'mcq',prompt:'Decision',options:[{t:'Worthwhile: expected purchases (≈ ₹62,550) exceed the ₹40,000 fee, at minimum uptake',ok:true},{t:'Not worthwhile'}]}],
+   explain:'Average income = 2.5 (the midpoint of a uniform distribution). Bangalore line: 1.280 + 0.739 × 2.5 = 3.1275 thousand. 20 buyers × ₹3,127.5 = ₹62,550 > ₹40,000. If margins are well below 64%, say so in your answer: the comparison here uses sales, not profit.',xl:['=20*(1.28+0.739*2.5)*1000']}
+ ]},
+
+{id:'T7',title:'CET performance',source:'DS2 old midterm, Question 3',pre:['C2','E4','F1','F2'],
+ caseHtml:`<p>167 Karnataka CET applicants. G = 1 if female, B = 1 if State board (CBSE is the base), BEMarks = board exam %, G_BEMarks = G × BEMarks, GB_BEMarks = B × G × BEMarks.</p>`,
+ exhibits:[
+  {title:'Model 1: CET on B',cols:['','Coef','SE','p'],rows:[['Intercept','80.88','0.93','0.00'],['B','−2.11','1.21','0.08']]},
+  {title:'Model 2: CET on G, B',cols:['','Coef','SE','p'],rows:[['Intercept','77.575','0.945','0.000'],['G','7.387','1.046','0.000'],['B','−2.055','1.060','0.054']]},
+  {title:'Model 3: CET on G, B, BEMarks (SSE 3244.65, df 163, MSE 19.91)',cols:['','Coef','SE','p'],rows:[['Intercept','28.07','3.48','0.00'],['G','3.27','0.75','0.00'],['B','1.22','0.74','0.10'],['BEMarks','0.60','0.04','0.00']]},
+  {title:'Model 4: adds G_BEMarks (SSE 3231.76, df 162, MSE 19.95)',cols:['','Coef','SE','p'],rows:[['Intercept','29.28','3.80','0.00'],['G_BEMarks','','0.08',''],['G','−3.13','8.00','0.70'],['B','1.39','0.77','0.07'],['BEMarks','0.58','0.05','0.00']]},
+  {title:'Model 5: G, B, BEMarks, GB_BEMarks (Sₑ 4.34, df 162)',cols:['','Coef','SE','p'],rows:[['Intercept','27.68','3.39','0.00'],['GB_BEMarks','−0.05','0.02','0.00'],['G','5.92','1.11','0.00'],['B','3.08','0.93','0.00'],['BEMarks','0.59','0.04','0.00']]},
+  {title:'Model 6: CET on BEMarks only',cols:['','Coef','SE','p'],rows:[['Intercept','26.538','3.242','0.000'],['BEMarks','0.646','0.039','0.000']]}],
+ qs:[
+  {n:'1',tags:['F1'],pts:2,prompt:'Average CET marks of CBSE and State board students. Is the difference significant?',items:[{id:'a',type:'num',prompt:'CBSE',ans:80.88},{id:'b',type:'num',prompt:'State',ans:80.88-2.11},{id:'c',type:'mcq',prompt:'At 5%',options:[{t:'Not significant (p = 0.08)',ok:true},{t:'Significant'}]}],explain:'Model 1 is dummy-only: CBSE = 80.88, State = 78.77. p = 0.08 > 0.05.'},
+  {n:'2',tags:['F1'],pts:3,prompt:'Using Model 2, rank the four gender–board groups and test the gaps.',items:[{id:'a',type:'num',prompt:'Average of the top group',ans:77.575+7.387},{id:'b',type:'mcq',prompt:'Ranking, high to low',options:[{t:'F-CBSE, F-State, M-CBSE, M-State',ok:true},{t:'F-CBSE, M-CBSE, F-State, M-State'},{t:'M-CBSE, F-CBSE, M-State, F-State'}]},{id:'c',type:'mcq',prompt:'1st vs 2nd (F-CBSE vs F-State)',options:[{t:'Not significant at 5% (B: p = 0.054)',ok:true},{t:'Significant'}]},{id:'d',type:'mcq',prompt:'1st vs 3rd (F-CBSE vs M-CBSE)',options:[{t:'Significant (G: p ≈ 0)',ok:true},{t:'Not significant'}]}],
+   explain:'F-CBSE = 77.575 + 7.387 = 84.962; F-State = 82.907; M-CBSE = 77.575; M-State = 75.520. 1st vs 2nd differ only by B (p = 0.054). 1st vs 3rd differ only by G (p ≈ 0).'},
+  {n:'3',tags:['F1'],pts:1,prompt:'Model 3: do females with the same board marks and board perform better in CET?',items:[{id:'a',type:'mcq',prompt:'',options:[{t:'Yes: about 3.27 marks higher, holding marks and board fixed (p ≈ 0)',ok:true},{t:'No'}]}],explain:'G = 3.27 with p ≈ 0 in a model that controls for BEMarks and B.'},
+  {n:'4',tags:['E4','F2'],pts:3,prompt:'Comparing Models 3 and 4: does the impact of board marks on CET vary with gender?',items:[{id:'a',type:'num',prompt:'Partial F',ans:(3244.65-3231.76)/19.95},{id:'b',type:'num',prompt:'Critical F',ans:finvrt(0.05,1,162)},{id:'c',type:'mcq',prompt:'Conclusion',options:[{t:'No: the slope on board marks is the same for both genders',ok:true},{t:'Yes'}]}],
+   explain:`F = (3244.65 − 3231.76)/1 ÷ 19.95 = ${((3244.65-3231.76)/19.95).toFixed(3)} < F.INV.RT(0.05, 1, 162) = ${finvrt(0.05,1,162).toFixed(2)}. The G_BEMarks interaction adds nothing.`,xl:['=(3244.65-3231.76)/19.95']},
+  {n:'5',tags:['C2'],pts:1,prompt:'Using the most appropriate model, predict the average CET marks of a candidate scoring 85% in a board exam (gender and board unknown).',items:[{id:'a',type:'num',prompt:'Predicted CET',ans:26.538+0.646*85}],explain:'With gender and board unknown, use Model 6: 26.538 + 0.646 × 85 = 81.448.',xl:['=26.538+0.646*85']},
+  {n:'6',tags:['F2','C2'],pts:3,prompt:'A female candidate expects 91% in her <b>State</b> board exam. What is the chance she clears 90% in CET?',items:[{id:'a',type:'num',prompt:'Predicted CET (Model 5)',ans:cetP},{id:'b',type:'num',prompt:'Probability CET > 90',ans:rtail((90-cetP)/4.34,162),pct:true,tol:0.03}],
+   explain:`G = B = 1, so GB_BEMarks = 91: 27.68 + 5.92 + 3.08 + (0.59 − 0.05) × 91 = ${cetP.toFixed(2)}. Without the X matrix, use Sₑ = 4.34 as the individual SE: t = (90 − ${cetP.toFixed(2)})/4.34 = ${((90-cetP)/4.34).toFixed(3)}; P ≈ ${rtail((90-cetP)/4.34,162).toFixed(3)}.`,xl:['=T.DIST.RT((90-85.82)/4.34,162)']}
+ ]},
+
+{id:'MOCK',title:'Mock midterm',source:'held-out papers: Box office, Property prices, Precision Watches',timed:50,
+ caseHtml:`<p>Twelve questions from three past papers you haven’t seen in any lesson or test. Calculator and Excel functions are allowed. α = 0.05 unless stated.</p>`,
+ exhibits:[
+  {title:'A. Box office (149 Indian movies; collections in ₹ crore)',note:'Descriptive: Collections mean 55.67 (SD 94.49); Budget 29.43 (28.25); YouTube_Likes 7877.5 (12748.0). Correlations: Collections–Budget .650, Collections–Likes .683, Budget–Likes .609.',cols:['Genre model (base Action)','Estimate','Std. Error','Pr(>|t|)'],rows:[['(Intercept)','91.6808','19.1018','3.9E-06'],['Comedy','−45.5658','24.6603','0.0667'],['Drama','−25.8877','24.8008','0.2983'],['Thriller','−63.7446','25.8234','0.0147']]},
+  {title:'A. Box office: interaction model',cols:['','Estimate','Std. Error','Pr(>|t|)'],rows:[['(Intercept)','18.7609','7.4437','0.0128'],['Thriller','−4.571','2.202','0.0398'],['Youtube_Likes','0.0051','0.0005','4.0E-21'],['Thriller×YouTubeLikes','−0.0048','0.0014','0.0008']]},
+  {title:'A. Box office: stepwise (all numeric variables)',cols:['Step','Residual SS','df','Mean Square','Variable','Zero-order','Partial','Part'],rows:[['1','705919.955','147','4802.177','Youtube_Likes','.683','.683','.683'],['2','590098.750','146','4041.772','Youtube_Likes','.683','.476','.361'],['2','','','','Budget','.650','.405','.296']]},
+  {title:'B. Property prices (414 properties): forward selection ANOVA',cols:['Step','Residual SS','df','Mean Square'],rows:[['2 (Distance, Schools)','38493.077','411','93.657'],['3 (+ Age)','35090.932','410','85.588']]},
+  {title:'B. Property: Location only (average prices: SEZ 64.02, Residential 46.15, Business District 27.92)',cols:['','B','Std. Error','Sig.'],rows:[['(Constant)','27.926','.477','.000'],['Dummy Variable 1','36.103','1.302','.000'],['Dummy Variable 2','18.228','.733','.000']]},
+  {title:'B. Property: Schools, Density (1 = high), SCH×DEN',cols:['','B','Std. Error','Sig.'],rows:[['(Constant)','26.015','.738','.000'],['Schools','2.197','.156','.000'],['Density','33.860','2.953','.000'],['SCH×DEN','−2.261','.464','']]},
+  {title:'C. Precision Watches (80 employees): JobPerf (0–100)',note:'Seniority (months): mean 18.89, SD 5.00. Model 1 ANOVA: Residual SS 7264.416, df 78, MS 93.134.',cols:['Model','','B','Std. Error','Sig.'],rows:[['1','(Constant)','48.928','4.125','.000'],['1','Seniority','.891','','.000'],['4','(Constant)','5.407','6.010','.371'],['4','Seniority','.821','.154','.000'],['4','AvgScore','.782','.094','.000']]}],
+ qs:[
+  {n:'1',tags:['F1','B3'],pts:3,prompt:'A. Can we conclude the average box office collection of <b>action</b> movies is <b>at least</b> ₹50 crore at 5%?',items:[{id:'a',type:'mcq',prompt:'Hypotheses',options:[{t:'H₀: μ ≥ 50, H₁: μ < 50 (left-tailed)',ok:true},{t:'H₀: μ ≤ 50, H₁: μ > 50'},{t:'H₀: μ = 50, H₁: μ ≠ 50'}]},{id:'b',type:'num',prompt:'t statistic',ans:(91.6808-50)/19.1018},{id:'c',type:'mcq',prompt:'Conclusion',options:[{t:'Fail to reject H₀: no evidence against "at least ₹50 crore"',ok:true},{t:'Reject H₀'}]}],
+   explain:`Action is the base, so its mean is the intercept 91.68 with SE 19.10. t = (91.68 − 50)/19.10 = ${((91.6808-50)/19.1018).toFixed(3)}, which is positive and nowhere near the left tail (T.INV(0.05, 144) ≈ −1.66). Fail to reject.`},
+  {n:'2',tags:['F2'],pts:1,prompt:'A. Does the thriller genre change the relationship between collections and YouTube likes?',items:[{id:'a',type:'mcq',prompt:'',options:[{t:'Yes: the interaction is significant (p = 0.0008)',ok:true},{t:'No: only the Thriller dummy matters'}]}],explain:'The Thriller × Likes coefficient (−0.0048, p = 0.0008) means likes pay off less for thrillers.'},
+  {n:'3',tags:['F2'],pts:2,prompt:'A. Difference in average collection between a thriller and a non-thriller, each with 20,000 YouTube likes.',items:[{id:'a',type:'num',prompt:'Thriller − non-thriller (₹ crore)',ans:-4.571-0.0048*20000}],explain:'Gap = β_Thriller + β_interaction × 20,000 = −4.571 − 0.0048 × 20,000 = −100.571.',xl:['=-4.571-0.0048*20000']},
+  {n:'4',tags:['E4'],pts:2,prompt:'A. Is Budget, added in step 2, significant at 5%?',items:[{id:'a',type:'num',prompt:'Partial F',ans:(705919.955-590098.75)/4041.772},{id:'b',type:'mcq',prompt:'Decision',options:[{t:'Significant',ok:true},{t:'Not significant'}]}],explain:`F = (705,919.955 − 590,098.750)/4,041.772 = ${((705919.955-590098.75)/4041.772).toFixed(2)} > F.INV.RT(0.05, 1, 146) = ${finvrt(0.05,1,146).toFixed(2)}.`,xl:['=(705919.955-590098.75)/4041.772']},
+  {n:'5',tags:['E3'],pts:1,prompt:'A. R² of the model after both variables are added.',items:[{id:'a',type:'num',prompt:'R²',ans:0.683**2+0.296**2,pct:true,tol:0.01}],explain:'R² = 0.683² + 0.296² (Budget’s part correlation) = 0.554.'},
+  {n:'6',tags:['E2'],pts:2,prompt:'A. Is there evidence of multicollinearity at step 2?',items:[{id:'a',type:'num',prompt:'VIF',ans:1/(1-0.609**2)},{id:'b',type:'mcq',prompt:'',options:[{t:'No serious multicollinearity',ok:true},{t:'Severe multicollinearity'}]}],explain:'Two predictors with r = 0.609: VIF = 1/(1 − 0.609²) = 1.59.'},
+  {n:'7',tags:['E4'],pts:2,prompt:'B. Is the variable added in step 3 (Age) significant?',items:[{id:'a',type:'num',prompt:'Partial F',ans:(38493.077-35090.932)/85.588},{id:'b',type:'mcq',prompt:'Decision',options:[{t:'Significant',ok:true},{t:'Not significant'}]}],explain:`F = (38,493.077 − 35,090.932)/85.588 = ${((38493.077-35090.932)/85.588).toFixed(2)} ≫ 3.86.`},
+  {n:'8',tags:['F1'],pts:1,prompt:'B. Which location is Dummy Variable 1?',items:[{id:'a',type:'mcq',prompt:'',options:[{t:'SEZ',ok:true},{t:'Residential'},{t:'Business District'}]}],explain:'The intercept 27.926 is the base (Business District, 27.92). 27.926 + 36.103 = 64.03 is SEZ, and 27.926 + 18.228 = 46.15 is Residential.'},
+  {n:'9',tags:['F1'],pts:2,prompt:'B. Write the location model with Dummy Variable 1 as the base.',items:[{id:'a',type:'num',prompt:'New intercept',ans:27.926+36.103},{id:'b',type:'num',prompt:'New coefficient of Residential',ans:18.228-36.103}],explain:'Intercept = 27.926 + 36.103 = 64.029. Residential = 18.228 − 36.103 = −17.875. Business District = −36.103.'},
+  {n:'10',tags:['F2'],pts:1,prompt:'B. Average price when the number of schools is 1 and density is low.',items:[{id:'a',type:'num',prompt:'Price',ans:26.015+2.197}],explain:'Density = 0 kills the Density and SCH×DEN terms: 26.015 + 2.197 × 1 = 28.212.'},
+  {n:'11',tags:['C1','C2'],pts:3,prompt:'C. Predict the average rating of a worker with 15 months of seniority (Model 1). Give the lowest and highest ratings this worker is likely to get at 90% confidence.',items:[{id:'a',type:'num',prompt:'Predicted rating',ans:JB.yh},{id:'b',type:'num',prompt:'Lowest (90%)',ans:JB.yh-tinv(0.95,78)*JB.seP},{id:'c',type:'num',prompt:'Highest (90%)',ans:JB.yh+tinv(0.95,78)*JB.seP}],
+   explain:`Ŷ = 48.928 + 0.891 × 15 = ${JB.yh.toFixed(3)}. One worker → SE(pred) = √93.134 × √(1 + 1/80 + (15 − 18.89)²/(79 × 5²)) = ${JB.seP.toFixed(3)}. 90% two-sided: ± T.INV.2T(0.10, 78) = ${tinv(0.95,78).toFixed(4)} → (${(JB.yh-tinv(0.95,78)*JB.seP).toFixed(2)}, ${(JB.yh+tinv(0.95,78)*JB.seP).toFixed(2)}).`,xl:['=SQRT(93.134)*SQRT(1+1/80+(15-18.89)^2/(79*5^2))']},
+  {n:'12',tags:['B1','B2','B3'],pts:3,prompt:'C. Two employees with the same average test score differ by 5 months of seniority. Can we conclude the more senior one rates <b>at least 3 points</b> higher at 5%? (Model 4)',items:[{id:'a',type:'num',prompt:'Estimated gap for 5 months',ans:5*0.821},{id:'b',type:'num',prompt:'t statistic',ans:(5*0.821-3)/(5*0.154)},{id:'c',type:'mcq',prompt:'Conclusion',options:[{t:'Fail to reject H₀: β×5 ≥ 3. The data is consistent with "at least 3"',ok:true},{t:'Reject: the gap is below 3'}]}],
+   explain:`Gap = 5 × 0.821 = 4.105, SE = 5 × 0.154 = 0.77 (scale both). "At least 3" includes equality, so H₀: 5β ≥ 3, H₁: 5β < 3. t = (4.105 − 3)/0.77 = ${((5*0.821-3)/(5*0.154)).toFixed(3)} > T.INV(0.05, 77) = ${tinv(0.05,77).toFixed(3)}, so fail to reject.`}
+ ]}
+);
+
 /* ================= State ================= */
+const PARTS={A:['Rebuild the output','Sessions 2–3'],B:['Rule on the claim','Session 3'],C:['Predict with intervals','Session 4'],D:['Check the model','Sessions 3 and 8'],E:['Multiple regression','Sessions 4–6'],F:['Categories and selection','Sessions 6–8'],G:['Decisions under uncertainty','Session 9']};
+LESSONS.forEach(l=>{l.session=l.session||PARTS[l.part][1]});
 const ORDER=LESSONS.map(l=>l.id);
-const S={view:'lesson',id:'A1',step:0,wrev:{},ans:{},done:{},tests:{},unlockAll:false,submitted:{}};
+const S={view:'lesson',id:'A1',step:0,wrev:{},ans:{},done:{},tests:{},unlockAll:false,submitted:{},timer:{}};
 try{const sv=JSON.parse(localStorage.getItem('oc_progress')||'null');if(sv){S.done=sv.done||{};S.tests=sv.tests||{};S.unlockAll=!!sv.unlockAll;if(sv.id)S.id=sv.id;if(sv.view)S.view=sv.view}}catch(e){}
 function save(){try{localStorage.setItem('oc_progress',JSON.stringify({done:S.done,tests:S.tests,unlockAll:S.unlockAll,id:S.id,view:S.view}))}catch(e){}}
 const lessonById=id=>LESSONS.find(l=>l.id===id);
-function unlocked(id){if(S.unlockAll)return true;const i=ORDER.indexOf(id);if(i>=0)return i===0||!!S.done[ORDER[i-1]];return ORDER.every(x=>S.done[x])}
+function unlocked(id){if(S.unlockAll)return true;const i=ORDER.indexOf(id);if(i>=0)return i===0||!!S.done[ORDER[i-1]];const T=TESTS.find(t=>t.id===id);return (T&&T.pre?T.pre:ORDER).every(x=>S.done[x])}
 
 /* ================= Navigation ================= */
 function renderNav(){
   const item=(id,title,view)=>{const lock=!unlocked(id),cur=(S.view===view&&S.id===id);const mk=view==='lesson'?(S.done[id]?'✓':''):(S.tests[id]?`${S.tests[id].pct}%`:'');
     return `<button class="navitem${cur?' cur':''}" data-go="${view}:${id}" ${lock?'disabled title="Finish the earlier lessons to unlock"':''}><span class="code">${id}</span><span class="ttl">${title}</span><span class="mk">${lock?'locked':mk}</span></button>`};
   const g=(h,arr)=>`<div class="navgroup"><h4>${h}</h4>${arr.join('')}</div>`;
-  document.getElementById('nav').innerHTML=`<div class="brand">Output Court<span>Rebuild the output. Rule on the claim.</span></div>
-  <div class="navgroups">${g('Part A · Rebuild the output',LESSONS.filter(l=>l.part==='A').map(l=>item(l.id,l.title,'lesson')))}
-  ${g('Part B · Rule on the claim',LESSONS.filter(l=>l.part==='B').map(l=>item(l.id,l.title,'lesson')))}
-  ${g('Exam tests',TESTS.map(t=>item(t.id,t.title,'test')))}
+  document.getElementById('nav').innerHTML=`<div class="brand">Output Court<span>DS2 regression, Sessions 1–9. Learn it, then prove it on past papers.</span></div>
+  <div class="navgroups">${Object.entries(PARTS).map(([p,[t]])=>g(`Part ${p} · ${t}`,LESSONS.filter(l=>l.part===p).map(l=>item(l.id,l.title,'lesson')))).join('')}
+  ${g('Past-paper tests',TESTS.filter(t=>!t.timed).map(t=>item(t.id,t.title,'test')))}
+  ${g('Midterm',TESTS.filter(t=>t.timed).map(t=>item(t.id,t.title,'test')))}
   <div class="navgroup"><h4>Review</h4><button class="navitem${S.view==='progress'?' cur':''}" data-go="progress:"><span class="code">≡</span><span class="ttl">Progress and formula sheet</span></button></div></div>
   <div class="navfoot"><label><input type="checkbox" id="unlockAll" ${S.unlockAll?'checked':''}> Preview mode: unlock everything</label></div>`;
 }
@@ -745,7 +1363,7 @@ function itemHTML(ctx,it,opts={}){
   const a=S.ans[akey(ctx,it)]||{},graded=opts.graded,showLetter=opts.letter&&/^[a-z]$/.test(it.id);
   let cls='item';if(a.status==='ok'||a.status==='shown')cls+=' ok';else if(a.status==='bad')cls+=' bad';
   if(graded)cls=a.status==='ok'?'item ok':'item bad';
-  let h=`<div class="${cls}" data-item="${it.id}"><div class="prompt">${showLetter?`<span class="tag">${it.id}</span>`:''}${it.prompt}</div>`;
+  let h=`<div class="${cls}" data-item="${it.id}"><div class="prompt">${showLetter?`<span class="tag">${it.id}</span>`:''}${it.prompt}</div>${it.fig?`<canvas class="rplot" data-fig="${it.fig}"></canvas>`:''}`;
   const lockIn=(a.status==='ok'||a.status==='shown'||graded);
   if(it.type==='num'){
     const v=a.raw||'';let pv='';try{const x=evalExpr(v);if(x!=null&&v.trim()&&!/^[-+]?[\d.,]+%?$/.test(v.trim()))pv='= '+nf(x)}catch(e){pv=v?String(e):''}
@@ -767,6 +1385,7 @@ function itemHTML(ctx,it,opts={}){
   }
   return h+`</div>`;
 }
+function exhibitHTML(list){return `<div class="xwrap"><div class="xout xex">${list.map(ex=>`<div class="xsec">${ex.title}</div>${ex.note?`<div class="toolnote" style="font-family:var(--body);margin-bottom:4px">${ex.note}</div>`:''}<table class="xt"><tr>${ex.cols.map(c=>`<th>${c}</th>`).join('')}</tr>${ex.rows.map(r=>`<tr>${r.map(c=>`<td>${c===''||c==null?'<span class="cell hide">—</span>':c}</td>`).join('')}</tr>`).join('')}</table>`).join('')}</div></div>`}
 function xlHTML(arr){return `<div class="xlbox">${arr.map(f=>`<div class="xlrow"><span class="xltag">Excel</span><code>${esc(f)}</code><button class="btn ghost" data-tocalc="${esc(f)}">Open in calculator</button></div>`).join('')}</div>`}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 function evalSafe(v){try{return evalExpr(v)}catch(e){return NaN}}
@@ -779,6 +1398,7 @@ function checkItem(it,a){
   if(x==null||!isFinite(x))return{ok:false,msg:'That doesn\'t give a number.'};
   if(it.pct&&/%\s*$/.test(a.raw.trim())===false&&Math.abs(x)>1&&near(x/100,it.ans,it))return{ok:true};
   if(near(x,it.ans,it))return{ok:true};
+  if((it.alts||[]).some(a=>near(x,a,it)))return{ok:true};
   for(const m of it.mistakes||[])if(near(x,m.v,it,m))return{ok:false,msg:m.msg};
   if(Math.abs(it.ans)>1e-9&&near(-x,it.ans,it))return{ok:false,msg:'Right size, wrong sign. Check the direction.'};
   const r=x/it.ans;if(isFinite(r)&&[10,100,1000,0.1,0.01,0.001].some(f=>Math.abs(r-f)/f<0.01))return{ok:false,msg:'The digits look right, but it\'s off by a power of 10. Check the units or a decimal place.'};
@@ -790,23 +1410,26 @@ function checkItem(it,a){
 const STEPS=['The idea','Where it lives','Worked example','Your turn'];
 function lessonHTML(L){
   const i=ORDER.indexOf(L.id),st=S.step;
-  let h=`<div class="eyebrow">Part ${L.part} · Lesson ${L.id} · ${i+1} of ${ORDER.length}</div><h1>${L.title}</h1>
+  let h=`<div class="eyebrow">Part ${L.part} · ${PARTS[L.part][0]} · ${L.session} · Lesson ${i+1} of ${ORDER.length}</div><h1>${L.title}</h1>
   <div class="stepper" role="tablist">${STEPS.map((s,k)=>`<button role="tab" data-step="${k}" class="${k===st?'cur':''}${k<st?' done':''}" aria-selected="${k===st}">${k+1} · ${s}</button>`).join('')}</div>`;
   if(st===0){h+=`<div class="stack"><div class="panel">${L.idea}</div><div class="rule"><b>Key rule</b>${L.rule}</div></div>`}
   if(st===1){
+    h+=`<div class="stack">`;
     if(L.whereHtml)h+=`<div class="panel">${L.whereHtml}</div>`;
-    else{const W=L.where,M=MODELS[W.model];h+=`<div class="stack"><div class="formula">${W.formula}</div>${outputTable(M,W.cells,{desc:W.desc})}<div>${W.note}</div><p class="toolnote">Yellow cells are what this lesson computes. Outlined cells are what it's built from, colour-matched to the formula.</p></div>`}
+    else if(L.where){const W=L.where,M=W.model&&MODELS[W.model];h+=`${W.formula?`<div class="formula">${W.formula}</div>`:''}${M?outputTable(M,W.cells,{desc:W.desc}):''}${W.exhibits?exhibitHTML(W.exhibits):''}<div>${W.note||''}</div>${M?`<p class="toolnote">Yellow cells are what this lesson computes. Outlined cells are what it's built from, colour-matched to the formula.</p>`:''}`}
+    if(L.viz)h+=`<div class="panel"><div class="eyebrow" style="margin-bottom:8px">Try it</div><div data-viz="${L.viz}"></div></div>`;
+    h+=`</div>`;
   }
   if(st===2){const Wk=L.worked,n=S.wrev[L.id]||0,shown={};Wk.steps.slice(0,n).forEach(s=>(s.show||[]).forEach(id=>shown[id]='fill'));
     const cells={...(Wk.cells||{}),...shown};
-    h+=`<div class="stack"><div class="panel">${Wk.prompt}</div>${Wk.model?outputTable(MODELS[Wk.model],cells,{desc:L.id==='B2'}):''}<div class="wsteps">`;
-    Wk.steps.slice(0,n).forEach((s,k)=>{h+=`<div class="wstep${k===n-1?' new':''}"><div class="wnum">${k+1}</div><div><h3>${s.h}</h3>${s.b?`<div>${s.b}</div>`:''}${s.calc?`<div class="calc">${s.calc}</div>`:''}${s.xl?xlHTML(s.xl):''}${s.write?`<div class="write">${s.write}</div>`:''}${s.curve?`<canvas class="tcurve" data-curve='${JSON.stringify(s.curve)}'></canvas>`:''}</div></div>`});
+    h+=`<div class="stack"><div class="panel">${Wk.prompt}</div>${Wk.model?outputTable(MODELS[Wk.model],cells,{desc:L.id==='B2'||Wk.desc}):''}${Wk.exhibits?exhibitHTML(Wk.exhibits):''}<div class="wsteps">`;
+    Wk.steps.slice(0,n).forEach((s,k)=>{h+=`<div class="wstep${k===n-1?' new':''}"><div class="wnum">${k+1}</div><div><h3>${s.h}</h3>${s.b?`<div>${s.b}</div>`:''}${s.calc?`<div class="calc">${s.calc}</div>`:''}${s.xl?xlHTML(s.xl):''}${s.write?`<div class="write">${s.write}</div>`:''}${s.fig?`<canvas class="rplot" data-fig="${s.fig}"></canvas>`:''}${s.curve?`<canvas class="tcurve" data-curve='${JSON.stringify(s.curve)}'></canvas>`:''}</div></div>`});
     h+=`</div>${n<Wk.steps.length?`<div><button class="btn primary" data-wnext>${n===0?'Start the worked example':'Show the next step'}</button> <span class="toolnote">Step ${n} of ${Wk.steps.length}</span></div>`:`<div class="toolnote">That's the full solution. Now try one yourself.</div>`}</div>`;
   }
   if(st===3){const G=L.guided,ctx='L'+L.id;const cells={...(G.cells||{})};
     G.items.forEach(it=>{const a=S.ans[akey(ctx,it)];if(it.fill&&a&&(a.status==='ok'||a.status==='shown'))cells[it.fill]='fill'});
     h+=`<div class="stack"><div class="panel">${G.intro}<p class="toolnote" style="margin:0">Answers can be numbers or expressions, including Excel functions such as <code>SQRT(4.7449)</code>, <code>T.INV.2T(0.05, 8)</code> or <code>F.INV.RT(0.05, 1, 34)</code>. Or work it out in the <b>Calculator</b> (bottom right) and press <b>Use in answer</b>.</p></div>
-    ${G.model?outputTable(MODELS[G.model],cells,{desc:L.id==='A2'||L.id==='B3'}):''}
+    ${G.model?outputTable(MODELS[G.model],cells,{desc:L.id==='A2'||L.id==='B3'||G.desc}):''}${G.exhibits?exhibitHTML(G.exhibits):''}
     ${G.items.map(it=>itemHTML(ctx,it,{letter:!!G.model})).join('')}`;
     const allOk=G.items.every(it=>{const a=S.ans[akey(ctx,it)];return a&&(a.status==='ok'||a.status==='shown')});
     if(allOk){const nxt=ORDER[ORDER.indexOf(L.id)+1];h+=`<div class="banner"><h2>${L.id} unlocked for the tests</h2><p><b>Key rule:</b> ${L.rule}</p><button class="btn primary" data-go="${nxt?'lesson:'+nxt:'test:T1'}">${nxt?`Next lesson: ${lessonById(nxt).title}`:'Take Test 1: JP Nagar'}</button></div>`}
@@ -819,13 +1442,16 @@ function lessonHTML(L){
 
 /* ================= Test view ================= */
 function testHTML(T){
-  const M=MODELS[T.model],ctx='T'+T.id,sub=S.submitted[T.id];
-  let h=`<div class="eyebrow">Exam test · ${T.source}</div><h1>${T.title}</h1>
-  <div class="stack"><div class="panel case">${T.caseHtml}<p class="toolnote" style="margin:0">No hints here. Expressions and Excel functions work in every box. Submit when you're done to see your marks and the full working.</p></div>
-  ${outputTable(M,T.cells,{desc:true})}`;
+  const M=T.model?MODELS[T.model]:null,ctx='T'+T.id,sub=S.submitted[T.id];
+  let h=`<div class="eyebrow">${T.timed?'Timed mock':'Past-paper test'} · ${T.source}</div><h1>${T.title}</h1>
+  <div class="stack"><div class="panel case">${T.caseHtml}<p class="toolnote" style="margin:0">No hints here. Expressions and Excel functions work in every box. Submit when you're done to see your marks and the full working.${T.pre?` Covers: ${T.pre.join(', ')}.`:''}</p></div>`;
+  if(T.timed&&!sub&&!S.timer[T.id]){h+=`<div class="panel"><h2>${T.timed} minutes, ${T.qs.length} questions</h2><p>The clock starts when you press Start and the test submits itself when time runs out. Treat it like the real midterm: calculator allowed, no lessons open.</p><button class="btn primary" data-starttimer="${T.id}">Start the ${T.timed}-minute mock</button></div></div>`;return h}
+  if(T.timed&&!sub)h+=`<div class="timerbar" id="timerbar">Time left <b id="timeleft">--:--</b><button class="btn ghost" data-submit="${T.id}">Submit now</button></div>`;
+  if(M)h+=outputTable(M,T.cells,{desc:true});
+  if(T.exhibits)h+=exhibitHTML(T.exhibits);
   if(sub){const r=S.tests[T.id];h+=`<div class="panel" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"><div class="score">${r.got.toFixed(1)} / ${r.max}</div><div><b>${r.pct}%</b><br><span class="toolnote">Weak spots are flagged below with a link back to the lesson.</span></div><button class="btn" data-retake="${T.id}" style="margin-left:auto">Try again</button></div>`}
   T.qs.forEach(q=>{
-    h+=`<div class="qblock"><div class="qhead"><h2>Q${q.n}</h2><span class="toolnote">${q.tags.join(' · ')}</span><span class="pts">${q.pts} pt${q.pts>1?'s':''}</span></div><p>${q.prompt}</p>`;
+    h+=`<div class="qblock"><div class="qhead"><h2>Q${q.n}</h2><span class="toolnote">${q.tags.join(' · ')}</span><span class="pts">${q.pts} pt${q.pts>1?'s':''}</span></div>${q.ex?exhibitHTML(q.ex):''}<p>${q.prompt}</p>`;
     h+=q.items.map(it=>itemHTML(ctx+'/'+q.n,it,{graded:!!sub})).join('');
     if(sub){const qr=S.tests[T.id].q[q.n];h+=`<div class="panel"><b>${qr.got.toFixed(1)} / ${q.pts}.</b> ${q.explain}${q.xl?xlHTML(q.xl):''}${qr.got<q.pts?`<div style="margin-top:10px">${q.tags.map(t=>`<button class="btn" data-go="lesson:${t}">Review ${t}: ${lessonById(t).title}</button>`).join(' ')}</div>`:''}</div>`}
     h+=`</div>`;});
@@ -836,15 +1462,21 @@ function gradeTest(T){
   const ctx='T'+T.id;let got=0,max=0;const q={},tag={};
   T.qs.forEach(Q=>{let ok=0;Q.items.forEach(it=>{const k=akey(ctx+'/'+Q.n,it),a=S.ans[k]||(S.ans[k]={});const r=checkItem(it,a);a.status=r.ok?'ok':'bad';a.msg=r.ok?'':(it.type==='mcq'?'':r.msg&&!/hint/.test(r.msg)?r.msg:'');if(r.ok)ok++});
     const g=Q.pts*ok/Q.items.length;got+=g;max+=Q.pts;q[Q.n]={got:g};Q.tags.forEach(t=>{tag[t]=tag[t]||{got:0,max:0};tag[t].got+=g;tag[t].max+=Q.pts})});
-  S.tests[T.id]={got,max,pct:Math.round(100*got/max),q,tag};S.submitted[T.id]=true;save();
+  S.tests[T.id]={got,max,pct:Math.round(100*got/max),q,tag};S.submitted[T.id]=true;delete S.timer[T.id];save();
 }
 
 /* ================= Progress view ================= */
 function progressHTML(){
   const tagAgg={};Object.values(S.tests).forEach(r=>Object.entries(r.tag||{}).forEach(([t,v])=>{tagAgg[t]=tagAgg[t]||{got:0,max:0};tagAgg[t].got+=v.got;tagAgg[t].max+=v.max}));
-  let h=`<div class="eyebrow">Review</div><h1>Progress and formula sheet</h1><div class="stack"><div class="panel tblwrap"><table class="plain"><tr><th>Concept</th><th>Lesson</th><th>Test accuracy</th><th></th></tr>`;
+  const lessonsDone=ORDER.filter(x=>S.done[x]).length,acc=LESSONS.map(L=>{const a=tagAgg[L.id];return a?a.got/a.max:0}),ready=Math.round(100*(0.3*lessonsDone/ORDER.length+0.7*acc.reduce((p,c)=>p+c,0)/acc.length));
+  const mock=TESTS.find(t=>t.timed),mr=mock&&S.tests[mock.id];
+  let h=`<div class="eyebrow">Review</div><h1>Progress and formula sheet</h1><div class="stack">
+  <div class="grid3"><div class="panel"><div class="eyebrow">Midterm readiness</div><div class="score">${ready}%</div><p class="toolnote" style="margin:6px 0 0">30% lessons finished, 70% accuracy on past-paper questions for each concept. Untested concepts count as 0.</p></div>
+  <div class="panel"><div class="eyebrow">Lessons finished</div><div class="score">${lessonsDone}<span style="font-size:22px;color:var(--muted)"> / ${ORDER.length}</span></div></div>
+  <div class="panel"><div class="eyebrow">Timed mock</div><div class="score">${mr?mr.pct+'%':'—'}</div><p class="toolnote" style="margin:6px 0 0">${mr?'Retake it after reviewing the flagged lessons.':'Unlocks when every lesson is done.'}</p></div></div>
+  <div class="panel tblwrap"><table class="plain"><tr><th>Concept</th><th>Session</th><th>Lesson</th><th>Past-paper accuracy</th><th></th></tr>`;
   LESSONS.forEach(L=>{const a=tagAgg[L.id],pct=a?Math.round(100*a.got/a.max):null;
-    h+=`<tr><td><b>${L.id}</b> ${L.title}</td><td>${S.done[L.id]?'<span style="color:var(--ok)">Passed</span>':'Not yet'}</td><td>${pct==null?'<span class="toolnote">No test yet</span>':`<div style="display:flex;gap:8px;align-items:center"><div class="bar"><i style="width:${pct}%"></i></div><span class="m">${pct}%</span></div>`}</td><td>${pct!=null&&pct<70?`<button class="btn ghost" data-go="lesson:${L.id}">Review</button>`:''}</td></tr>`});
+    h+=`<tr><td><b>${L.id}</b> ${L.title}</td><td class="toolnote">${L.session}</td><td>${S.done[L.id]?'<span style="color:var(--ok)">Passed</span>':'Not yet'}</td><td>${pct==null?'<span class="toolnote">No test yet</span>':`<div style="display:flex;gap:8px;align-items:center"><div class="bar"><i style="width:${pct}%"></i></div><span class="m">${pct}%</span></div>`}</td><td>${pct!=null&&pct<70?`<button class="btn ghost" data-go="lesson:${L.id}">Review</button>`:''}</td></tr>`});
   h+=`</table></div><h2>Your formula sheet</h2><p class="toolnote">The key rule from every lesson you've passed.</p><div class="grid2">`;
   const passed=LESSONS.filter(L=>S.done[L.id]);
   h+=passed.length?passed.map(L=>`<div class="rule"><b>${L.id} · ${L.title}</b>${L.rule}</div>`).join(''):'<p>Pass a lesson to add its rule here.</p>';
@@ -860,6 +1492,9 @@ function render(focusTop){
   else if(S.view==='test'){const T=TESTS.find(t=>t.id===S.id);if(!T||!unlocked(T.id)){S.view='lesson';S.id='A1';return render()}main.innerHTML=testHTML(T)}
   else main.innerHTML=progressHTML();
   main.querySelectorAll('canvas[data-curve]').forEach(cv=>drawT(cv,JSON.parse(cv.dataset.curve)));
+  main.querySelectorAll('canvas[data-fig]').forEach(cv=>drawFig(cv,cv.dataset.fig));
+  main.querySelectorAll('[data-viz]').forEach(el=>{const f=VIZ[el.dataset.viz];if(f)f(el)});
+  tickTimer();
   if(focusTop){window.scrollTo({top:0});main.focus({preventScroll:true})}
   save();
 }
@@ -873,7 +1508,8 @@ document.addEventListener('click',e=>{
   const rv=e.target.closest('[data-reveal]');if(rv){const it=itemOf(rv,rv.dataset.reveal),k=akey(ctxOf(rv),it),a=S.ans[k]||(S.ans[k]={});a.status='shown';if(it.type==='num')a.raw=String(+it.ans.toPrecision(8));else a.sel=it.options.findIndex(o=>o.ok);a.hints=(it.hints||[]).length;afterCheck();render();return}
   if(e.target.closest('[data-check]')){const L=lessonById(S.id),ctx='L'+L.id;L.guided.items.forEach(it=>{const k=akey(ctx,it),a=S.ans[k]||(S.ans[k]={});if(a.status==='ok'||a.status==='shown')return;const r=checkItem(it,a);if(a.raw==null&&a.sel==null){a.status=null;return}a.status=r.ok?'ok':'bad';a.msg=r.msg;if(!r.ok)a.tries=(a.tries||0)+1});afterCheck();render();return}
   const sb=e.target.closest('[data-submit]');if(sb){gradeTest(TESTS.find(t=>t.id===sb.dataset.submit));render(true);return}
-  const rt=e.target.closest('[data-retake]');if(rt){const id=rt.dataset.retake;Object.keys(S.ans).filter(k=>k.startsWith('T'+id+'/')).forEach(k=>delete S.ans[k]);delete S.submitted[id];render(true);return}
+  const rt=e.target.closest('[data-retake]');if(rt){const id=rt.dataset.retake;Object.keys(S.ans).filter(k=>k.startsWith('T'+id+'/')).forEach(k=>delete S.ans[k]);delete S.submitted[id];delete S.timer[id];render(true);return}
+  const stt=e.target.closest('[data-starttimer]');if(stt){const T=TESTS.find(t=>t.id===stt.dataset.starttimer);S.timer[T.id]=Date.now()+T.timed*60000;render(true);return}
   if(e.target.closest('[data-reset1]')){document.getElementById('resetBox').innerHTML=`<p><b>Reset everything?</b> This can't be undone.</p><button class="btn" data-reset2 style="border-color:var(--bad);color:var(--bad)">Yes, reset</button> <button class="btn ghost" data-cancelreset>Cancel</button>`;return}
   if(e.target.closest('[data-cancelreset]')){render();return}
   if(e.target.closest('[data-reset2]')){S.done={};S.tests={};S.ans={};S.submitted={};S.wrev={};S.id='A1';S.view='lesson';S.step=0;render(true);return}
@@ -938,6 +1574,8 @@ cin.addEventListener('input',cpreview);
 cin.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ceq()}if(e.key==='Escape'){closeCalc();fab.focus()}});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-tocalc]');if(b){openCalc(b.dataset.tocalc.replace(/^=/,''));setCTab('keys')}});
 
+function tickTimer(){const el=document.getElementById('timeleft');if(!el||S.view!=='test')return;const end=S.timer[S.id];if(!end)return;const ms=end-Date.now();if(ms<=0){gradeTest(TESTS.find(t=>t.id===S.id));render(true);return}const m=Math.floor(ms/60000),sec=Math.floor(ms/1000)%60;el.textContent=`${m}:${String(sec).padStart(2,'0')}`;el.parentElement.classList.toggle('low',ms<5*60000)}
+setInterval(tickTimer,1000);
 if(!['lesson','test','progress'].includes(S.view))S.view='lesson';
 S.step=0;render();
 </script>
